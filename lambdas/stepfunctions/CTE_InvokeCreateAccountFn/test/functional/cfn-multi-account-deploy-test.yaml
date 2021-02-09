@@ -1,0 +1,51 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: TEST - Control Tower Integration Test for SDLC Account Creation
+
+Parameters:
+  pAccountNamePrefix:
+    Type: String
+    Default: 'ent-ct-team'
+  pSSOUserFirstName:
+   Type: String
+  pSSOUserLastName:
+    Type: String
+  pSSOUserEmail:
+    Type: String
+  # Account Root Email Addresses
+  pDevAccountEmail:
+    Type: String
+  pTestAccountEmail:
+    Type: String
+
+Resources:
+  rCreateDevAccount:
+    Type: Custom::InvokeCreateAccountFn
+    Properties:
+      ServiceToken: !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:CTE_InvokeCreateAccountFn
+      CreateAccountSfn: !Sub arn:aws:states:${AWS::Region}:${AWS::AccountId}:stateMachine:CTE_SDLC-Integration
+      ServiceCatalogParameters:
+        AccountName: !Sub ${pAccountNamePrefix}-dev
+        AccountEmail: !Ref pDevAccountEmail
+        SSOUserFirstName: !Ref pSSOUserFirstName
+        SSOUserLastName: !Ref pSSOUserLastName
+        SSOUserEmail: !Ref pSSOUserEmail
+        ManagedOrganizationalUnit: SharedServices:ent:Dev
+
+  rCreateTestAccount:
+    Type: Custom::InvokeCreateAccountFn
+    Properties:
+      ServiceToken: !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:CTE_InvokeCreateAccountFn
+      CreateAccountSfn: !Sub arn:aws:states:${AWS::Region}:${AWS::AccountId}:stateMachine:CTE_SDLC-Integration
+      ServiceCatalogParameters:
+        AccountName: !Sub ${pAccountNamePrefix}-test
+        AccountEmail: !Ref pTestAccountEmail
+        SSOUserFirstName: !Ref pSSOUserFirstName
+        SSOUserLastName: !Ref pSSOUserLastName
+        SSOUserEmail: !Ref pSSOUserEmail
+        ManagedOrganizationalUnit: SharedServices:ent:Depl
+
+Outputs:
+  oDevAccountId:
+    Value: !GetAtt rCreateDevAccount.AccountId
+  oTestAccountId:
+    Value: !GetAtt rCreateTestAccount.AccountId

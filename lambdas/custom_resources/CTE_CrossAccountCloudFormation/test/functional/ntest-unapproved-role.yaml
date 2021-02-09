@@ -1,0 +1,35 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: TEST - This will execute the CrossAccountCloudFormation function using an Unapproved Role to test failure
+
+Resources:
+  rTestIamRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: TEST-CrossAccountCloudFormationRoleDenied
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              AWS:
+                - !Sub arn:aws:iam::${AWS::AccountId}:root
+            Action:
+              - sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/ReadOnlyAccess
+  rTestCrossAccountCloudFormationSns:
+    Type: Custom::CTE_CrossAccountCloudFormation
+    Properties:
+      ServiceToken: !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:CTE_CrossAccountCloudFormation
+      Parameters:
+        Configuration:
+          RoleArn: !GetAtt rTestIamRole.Arn
+          Capabilities: CAPABILITY_NAMED_IAM
+          StackName: TEST-CrossAccountCloudFormation-UnapprovedRole
+          Description: 'TESTING CrossAccountCloudformation Function'
+          Resources:
+            rTESTSnsTopic:
+              Type: AWS::SNS::Topic
+              Properties:
+                DisplayName: TEST-SNS-TOPIC
+                TopicName: TEST-SNS-TOPIC

@@ -1,0 +1,90 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: Deploys S3 Bucket and KMS Key for the use of the SAM deployment of StepFunctions
+
+Parameters:
+  pRoleArn:
+    Type: String
+    Description: Role Arn of User who is deploying solution. Used to manage KMS Key.
+
+Resources:
+  # -----
+  # KMS
+  # -----
+  rControlTowerExtensionKmsKey:
+    Type: AWS::KMS::Key
+    Properties:
+      Description: Used by the ControlTower Extension for PipelineFactory
+      EnableKeyRotation: true
+      KeyPolicy:
+        Version: '2012-10-17'
+        Id: !Ref AWS::StackName
+        Statement:
+          - Sid: Allow access for Key Administrators
+            Effect: Allow
+            Principal:
+              AWS:
+                - !Sub arn:aws:iam::${AWS::AccountId}:root
+                - !Ref pRoleArn
+            Action:
+              - kms:*
+            Resource: "*"
+
+  rControlTowerExtensionKmsKeyAlias:
+    Type: AWS::KMS::Alias
+    Properties:
+      AliasName: alias/ControlTowerExtension-PipelineFactory
+      TargetKeyId: !Ref rControlTowerExtensionKmsKey
+
+  # -----
+  # S3
+  # -----
+  rControlTowerExtensionBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub controltowerextension-sdlc-${AWS::AccountId}-${AWS::Region}
+      AccessControl: BucketOwnerFullControl
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              KMSMasterKeyID: !Ref rControlTowerExtensionKmsKey
+              SSEAlgorithm: aws:kms
+      VersioningConfiguration:
+        Status: Enabled
+
+  rControlTowerExtensionBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref rControlTowerExtensionBucket
+      PolicyDocument:
+        Statement:
+          - Sid: DenyUnEncryptedObjectUploads
+            Effect: Deny
+            Principal: '*'
+            Action: s3:PutObject
+            Resource: !Sub ${rControlTowerExtensionBucket.Arn}/*
+            Condition:
+              StringNotEquals:
+                s3:x-amz-server-side-encryption: aws:kms
+          - Sid: DenyInsecureConnections
+            Effect: Deny
+            Principal: '*'
+            Action: s3:*
+            Resource: !Sub ${rControlTowerExtensionBucket.Arn}/*
+            Condition:
+              Bool:
+                aws:SecureTransport: 'false'
+          - Sid: DisableSigV2
+            Effect: Deny
+            Principal: '*'
+            Action: s3:*
+            Resource:
+              - !Sub ${rControlTowerExtensionBucket.Arn}/*
+              - !Sub ${rControlTowerExtensionBucket.Arn}
+            Condition:
+              StringEquals:
+                s3:signatureversion: AWS

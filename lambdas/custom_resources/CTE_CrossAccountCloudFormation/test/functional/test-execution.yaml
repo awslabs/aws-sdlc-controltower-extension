@@ -1,0 +1,87 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: TEST - This will execute the CrossAccountCloudFormation function
+
+Resources:
+  rTestLambdaFunctionAlias:
+    Type: AWS::Lambda::Alias
+    Properties:
+      FunctionName: CTE_CrossAccountCloudFormation
+      FunctionVersion: $LATEST
+      Name: functest
+
+  rTestLambdaFunctionPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref rTestLambdaFunctionAlias
+      Action: lambda:InvokeFunction
+      Principal: cloudformation.amazonaws.com
+
+  rTestAcctLambdaFunctionPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: CTE_CrossAccountCloudFormation
+      Action: lambda:InvokeFunction
+      Principal: !Ref AWS::AccountId
+
+  rTestIamRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: TEST-CrossAccountCloudFormationRole
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              AWS:
+                - !Sub arn:aws:iam::${AWS::AccountId}:root
+            Action:
+              - sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AdministratorAccess
+
+  rTestCrossAccountCloudFormationSns:
+    Type: Custom::CTE_CrossAccountCloudFormation
+    DependsOn: rTestAcctLambdaFunctionPermission
+    Properties:
+      ServiceToken: !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:CTE_CrossAccountCloudFormation
+      Parameters:
+        Configuration:
+          RoleArn: !GetAtt rTestIamRole.Arn
+          Capabilities: CAPABILITY_NAMED_IAM
+          StackName: TEST-CrossAccountCloudFormation-SNS
+          Description: 'TESTING CrossAccountCloudformation Function'
+          Resources:
+            rTESTSnsTopic:
+              Type: AWS::SNS::Topic
+              Properties:
+                DisplayName: TEST-SNS-TOPIC
+                TopicName: TEST-SNS-TOPIC
+
+  rSsmParameter:
+    Type: Custom::CTE_CrossAccountCloudFormation
+    Properties:
+      ServiceToken: !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:CTE_CrossAccountCloudFormation
+      Parameters:
+        Configuration:
+          RoleArn: !GetAtt rTestIamRole.Arn
+          Capabilities: CAPABILITY_NAMED_IAM
+          StackName: !Sub TEST-MultiRegion-xacct-${AWS::Region}
+          Description: Testing multi region Cross accoutn Shared Services Parameter Store
+          Regions:
+            - 'us-east-1'
+          Resources:
+            rDeplAccountSSM:
+              Type: AWS::SSM::Parameter
+              Properties:
+                Description: Test Xacct Multi region
+                Name: '/test'
+                Type: String
+                Value: 'test_value'
+                Tags:
+                  "Test_Tag": 'Test_Tag_Value'
+
+Outputs:
+  oTestIamRole:
+    Value: !GetAtt rTestIamRole.Arn
+    Export:
+      Name: oTestIamRole

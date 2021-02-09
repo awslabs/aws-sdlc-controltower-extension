@@ -1,0 +1,20 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: TEST - This will execute the CrossAccountCloudFormation function without a qualifier for ServiceToken to test failure
+
+Resources:
+  rTestCrossAccountCloudFormationSns:
+    Type: Custom::CTE_CrossAccountCloudFormation
+    Properties:
+      ServiceToken: !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:CTE_CrossAccountCloudFormation
+      Parameters:
+        Configuration:
+          RoleArn: !ImportValue oTestIamRole
+          Capabilities: CAPABILITY_NAMED_IAM
+          StackName: TEST-CrossAccountCloudFormation-NoQualifier
+          Description: 'TESTING CrossAccountCloudformation Function'
+          Resources:
+            rTESTSnsTopic:
+              Type: AWS::SNS::Topic
+              Properties:
+                DisplayName: TEST-SNS-TOPIC-NO-QUALIFIER
+                TopicName: TEST-SNS-TOPIC-NO-QUALIFIER

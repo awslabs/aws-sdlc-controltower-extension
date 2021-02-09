@@ -1,0 +1,20 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: TEST - This will execute the CrossAccountCloudFormation function with an account in a different stack to test failure
+
+Resources:
+  rTestCrossAccountCloudFormationSnsFail:
+    Type: Custom::CTE_CrossAccountCloudFormation
+    Properties:
+      ServiceToken: !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:CTE_CrossAccountCloudFormation:functest
+      Parameters:
+        Configuration:
+          RoleArn: !ImportValue oTestIamRole
+          Capabilities: CAPABILITY_NAMED_IAM
+          StackName: TEST-CrossAccountCloudFormation-XStack
+          Description: 'TESTING CrossAccountCloudformation Function'
+          Resources:
+            rTESTSnsTopic:
+              Type: AWS::SNS::Topic
+              Properties:
+                DisplayName: TEST-SNS-TOPIC-XSTACK
+                TopicName: TEST-SNS-TOPIC-XSTACK
