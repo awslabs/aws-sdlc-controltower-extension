@@ -39,7 +39,8 @@ search for an existing account creation and will put it in a wait cycle until th
 | tox.ini | Configured file for Tox. Tox is a command-line driven automated testing tool for Python, based on the use of virtualenv. |
 
 ## Pre-requisite Steps:
-- Control Tower must be turned on in Management Account [link to AWS Doc](https://docs.aws.amazon.com/controltower/latest/userguide/getting-started-with-control-tower.html)
+- Control Tower must be turned on in Management Account [Link to AWS Doc](https://docs.aws.amazon.com/controltower/latest/userguide/getting-started-with-control-tower.html)
+- Install the Serverless Application Model CLI (SAM) [Link to AWS Doc](https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/serverless-sam-cli-install.html)
 - Ensure you have AWS CLI and Console access to the AWS Management Account. Please read disclaimer. 
 
 ### ** DISCLAIMER **
@@ -52,7 +53,7 @@ privileged permission model.  We recommend that customers use a federated role f
     "Version": "2012-10-17",
     "Statement": [
         {
-            "Sid": "sdlc-controltower-extension,
+            "Sid": "SdlcControlTowerExtension",
             "Effect": "Allow",
             "Action": [
               "cloudformation:CreateChangeSet",
@@ -175,9 +176,10 @@ privileged permission model.  We recommend that customers use a federated role f
 For this example S3 Bucket Access Logging is not enabled but is recommended that you do so when added to your enterprise.
   
 ## Deployment Steps:
+- Change directory into the repository directory `cd aws-sdlc-controltower-extension-main`.
 - Execute the cloudformation/sam-bootstrap.yaml into the AWS Management Account where the AWS Control Tower will live.
   ```bash
-  LOCAL_ROLE_ARN=$(aws sts get-caller-identity --query 'Arn' --output text)
+  LOCAL_ROLE_ARN=$(aws sts get-caller-identity --query 'Arn' --output text | sed -e 's/assumed-//g' | sed -e 's/\/botocore-session-[0-9]*//g')
   aws cloudformation create-stack --stack-name SDLC-ControlTowerExtension-Bootstrap \
     --template-body file://cloudformation/sam-bootstrap.yaml \
     --parameters ParameterKey=pRoleArn,ParameterValue=${LOCAL_ROLE_ARN}\
@@ -462,19 +464,36 @@ Outputs:
 
 ## Additional Information
 ### Common Errors
+**Error:**
+
 ```bash
 An error occurred (ResourceNotFoundException) when calling the DescribeProduct operation: Product with name AWS Control 
 Tower Account Factory does not exist or access was denied.
 ```
+
+**Solution:**
+
 This means that the CTE-SDLC-StepFunctions-rCTECreateAccountFnRole-* and 
 CTE-SDLC-StepFunctions-rCTEGetAccountStatusFnRole-* Roles haven't been added to the AWS Service Catalog Portfolio 
 (AWS Control Tower Account Factory Portfolio).
 
-### AWS SAM CLI 
-https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/serverless-sam-cli-install.html
+**Error:**
+
+```bash
+Failed to create ‘SampleOU_Depl’: AWS Control Tower cannot register organizational unit ou-xxxx-xxxxxxxx because 
+another operation is in progress. Try again later.
+```
+
+**Solution:**
+
+Wait a couple minutes between creating Organizational Units.  
+
+Custom Resource failed to stabilize in expected time. If you are using the Python cfn-response module, you may need to update your Lambda function code so that CloudFormation can attach the updated version.
+
 
 ### Packages needed for running tests
 Packages needed to run Unit Tests
+
 ```bash
 pip install -r test_requirements.txt
 ```
