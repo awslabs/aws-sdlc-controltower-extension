@@ -155,14 +155,26 @@ Resources:
           SC_CT_PRODUCT_NAME: 'AWS Control Tower Account Factory'
       Policies:
         - AWSControlTowerServiceRolePolicy
+        - AWSSSOMasterAccountAdministrator
         - Statement:
           - Effect: Allow
             Action:
               - controltower:CreateManagedAccount
               - controltower:DescribeManagedAccount
-              - sso:DescribeRegisteredRegions
-              - sso:ListDirectoryAssociations
+              - sso-directory:CreateUser
               - sso-directory:DescribeDirectory
+              - sso-directory:SearchGroups
+              - sso-directory:SearchUsers
+              - sso:AssociateProfile
+              - sso:DescribeRegisteredRegions
+              - sso:GetApplicationInstance
+              - sso:GetPeregrineStatus
+              - sso:GetProfile
+              - sso:GetSSOStatus
+              - sso:GetTrust
+              - sso:ListDirectoryAssociations
+              - sso:ListPermissionSets
+              - sso:ListProfileAssociations
               - servicecatalog:ExecuteProvisionedProductPlan
               - servicecatalog:ScanProvisionedProducts
               - servicecatalog:SearchProducts

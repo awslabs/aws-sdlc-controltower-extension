@@ -68,7 +68,7 @@ Resources:
         SSOUserFirstName: !Ref pSSOUserFirstName
         SSOUserLastName: !Ref pSSOUserLastName
         SSOUserEmail: !Ref pSSOUserEmail
-        ManagedOrganizationalUnit: Workloads:ent:Dev
+        ManagedOrganizationalUnit: SampleOU_Dev
 
   rCreateTestAccount:
     Type: Custom::InvokeCreateAccountFn
@@ -82,7 +82,7 @@ Resources:
         SSOUserFirstName: !Ref pSSOUserFirstName
         SSOUserLastName: !Ref pSSOUserLastName
         SSOUserEmail: !Ref pSSOUserEmail
-        ManagedOrganizationalUnit: Workloads:ent:Test
+        ManagedOrganizationalUnit: SampleOU_Test
 
   rCreateProdAccount:
     Type: Custom::InvokeCreateAccountFn
@@ -96,7 +96,7 @@ Resources:
         SSOUserFirstName: !Ref pSSOUserFirstName
         SSOUserLastName: !Ref pSSOUserLastName
         SSOUserEmail: !Ref pSSOUserEmail
-        ManagedOrganizationalUnit: Workloads:ent:Prod
+        ManagedOrganizationalUnit: SampleOU_Prod
 
   rCreateDeplAccount:
     Type: Custom::InvokeCreateAccountFn
@@ -109,7 +109,7 @@ Resources:
         SSOUserFirstName: !Ref pSSOUserFirstName
         SSOUserLastName: !Ref pSSOUserLastName
         SSOUserEmail: !Ref pSSOUserEmail
-        ManagedOrganizationalUnit: Workloads:ent:Deploy
+        ManagedOrganizationalUnit: SampleOU_Depl
 
   # ------
   # IAM
