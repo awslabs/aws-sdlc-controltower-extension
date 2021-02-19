@@ -57,7 +57,6 @@ def lambda_handler(event, context):
     except Exception as e:
         logger.warning(e)
         logger.warning(f"No Outputs found from template {config['StackName']}")
-        pass
 
     # Get the number of regions it will deploy to to allow for proper Cfn Outputs
     num_of_regions = len(regions)
@@ -74,7 +73,12 @@ def lambda_handler(event, context):
         except Exception as e:
             logger.error(f"Assume Role Error:{e}", exc_info=True)
             response_data['ERROR'] = str(e)
-            cfnresponse.send(event, context, cfnresponse.FAILED, response_data, "CustomResourcePhysicalID")
+            cfnresponse.send(
+                event=event,
+                context=context,
+                responseStatus=cfnresponse.FAILED,
+                responseData=response_data
+            )
             return
 
         if event['RequestType'] == "Delete":
@@ -86,13 +90,23 @@ def lambda_handler(event, context):
                     if response:
                         response_data['Data'] = response
 
-                cfnresponse.send(event, context, cfnresponse.SUCCESS, response_data, "CustomResourcePhysicalID")
+                cfnresponse.send(
+                    event=event,
+                    context=context,
+                    responseStatus=cfnresponse.SUCCESS,
+                    responseData=response_data
+                )
                 return
 
             except Exception as e:
                 logger.error(f"Deleting Stack Error:{e}", exc_info=True)
                 response_data['ERROR'] = str(e)
-                cfnresponse.send(event, context, cfnresponse.FAILED, response_data, "CustomResourcePhysicalID")
+                cfnresponse.send(
+                    event=event,
+                    context=context,
+                    responseStatus=cfnresponse.FAILED,
+                    responseData=response_data
+                )
                 return
 
         else:
@@ -136,7 +150,12 @@ def lambda_handler(event, context):
                     enable_termination_protection(stack_name=config['StackName'], session=session)
 
                 logger.debug(f"response_data:{response_data}")
-                cfnresponse.send(event, context, cfnresponse.SUCCESS, response_data, "CustomResourcePhysicalID")
+                cfnresponse.send(
+                    event=event,
+                    context=context,
+                    responseStatus=cfnresponse.SUCCESS,
+                    responseData=response_data
+                )
 
             except Exception as e:
                 logger.error(f"Main Function Error:{e}", exc_info=True)
@@ -146,6 +165,10 @@ def lambda_handler(event, context):
                 else:
                     response_data['ERROR'] = str(e)
 
-                cfnresponse.send(event, context, cfnresponse.FAILED, response_data, "CustomResourcePhysicalID")
-
+                cfnresponse.send(
+                    event=event,
+                    context=context,
+                    responseStatus=cfnresponse.FAILED,
+                    responseData=response_data
+                )
         count += 1

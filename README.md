@@ -218,8 +218,7 @@ These templates include the AWS StepFunction as well as all the Lambda Functions
 with the CloudFormation to deploy them **cfn.yaml** are located in the "lambdas" directory.
 - Deploy Serverless Application Model function.
   ```bash 
-  cd ./scripts 
-  ./sam.sh 
+  ./scripts/sam.sh 
   ```
 
 ### Post Serverless Install

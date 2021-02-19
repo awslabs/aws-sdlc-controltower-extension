@@ -13,9 +13,13 @@ Metadata:
           - pSSOUserLastName
           - pSSOUserEmail
           - pDevAccountEmail
+          - pDevOrganizationalUnit
           - pTestAccountEmail
+          - pTestOrganizationalUnit
           - pProdAccountEmail
+          - pProdOrganizationalUnit
           - pDeplAccountEmail
+          - pDeplOrganizationalUnit
 
     ParameterLabels:
       pAccountNamePrefix:
@@ -34,6 +38,14 @@ Metadata:
         default: "Production Account Root Email"
       pDeplAccountEmail:
         default: "Deployment Account Root Email"
+      pDevOrganizationalUnit:
+        default: "Development Account Organizational Unit"
+      pTestOrganizationalUnit:
+        default: "Test Account Organizational Unit"
+      pProdOrganizationalUnit:
+        default: "Production Account Organizational Unit"
+      pDeplOrganizationalUnit:
+        default: "Deployment Account Organizational Unit"
 
 Parameters:
   pAccountNamePrefix:
@@ -54,11 +66,20 @@ Parameters:
     Type: String
   pDeplAccountEmail:
     Type: String
+  # Account Organizational Unit
+  pDevOrganizationalUnit:
+    Type: String
+  pTestOrganizationalUnit:
+    Type: String
+  pProdOrganizationalUnit:
+    Type: String
+  pDeplOrganizationalUnit:
+    Type: String
 
 Resources:
   rCreateDevAccount:
     Type: Custom::InvokeCreateAccountFn
-    DependsOn: rCreateProdAccount
+    DependsOn: rCreateTestAccount
     Properties:
       ServiceToken: !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:CTE_InvokeCreateAccountFn
       CreateAccountSfn: !Sub arn:aws:states:${AWS::Region}:${AWS::AccountId}:stateMachine:CTE_SDLC_Integration
@@ -68,7 +89,7 @@ Resources:
         SSOUserFirstName: !Ref pSSOUserFirstName
         SSOUserLastName: !Ref pSSOUserLastName
         SSOUserEmail: !Ref pSSOUserEmail
-        ManagedOrganizationalUnit: SampleOU_Dev
+        ManagedOrganizationalUnit: !Ref pDevOrganizationalUnit
 
   rCreateTestAccount:
     Type: Custom::InvokeCreateAccountFn
@@ -82,7 +103,7 @@ Resources:
         SSOUserFirstName: !Ref pSSOUserFirstName
         SSOUserLastName: !Ref pSSOUserLastName
         SSOUserEmail: !Ref pSSOUserEmail
-        ManagedOrganizationalUnit: SampleOU_Test
+        ManagedOrganizationalUnit: !Ref pTestOrganizationalUnit
 
   rCreateProdAccount:
     Type: Custom::InvokeCreateAccountFn
@@ -96,7 +117,7 @@ Resources:
         SSOUserFirstName: !Ref pSSOUserFirstName
         SSOUserLastName: !Ref pSSOUserLastName
         SSOUserEmail: !Ref pSSOUserEmail
-        ManagedOrganizationalUnit: SampleOU_Prod
+        ManagedOrganizationalUnit: !Ref pProdOrganizationalUnit
 
   rCreateDeplAccount:
     Type: Custom::InvokeCreateAccountFn
@@ -109,7 +130,7 @@ Resources:
         SSOUserFirstName: !Ref pSSOUserFirstName
         SSOUserLastName: !Ref pSSOUserLastName
         SSOUserEmail: !Ref pSSOUserEmail
-        ManagedOrganizationalUnit: SampleOU_Depl
+        ManagedOrganizationalUnit: !Ref pDeplOrganizationalUnit
 
   # ------
   # IAM

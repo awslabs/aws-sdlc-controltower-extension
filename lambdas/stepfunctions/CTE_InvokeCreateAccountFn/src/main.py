@@ -4,8 +4,8 @@
 # Customer and Amazon Web Services, Inc.
 
 import json
-import cfnresponse
 import logging
+import cfnresponse
 import boto3
 
 logging.basicConfig()
@@ -35,8 +35,7 @@ def lambda_handler(event, context):
             event=event,
             context=context,
             responseStatus=cfnresponse.SUCCESS,
-            responseData=response_body,
-            physicalResourceId="CustomResourcePhysicalID"
+            responseData=response_body
         )
 
     else:
@@ -54,6 +53,5 @@ def lambda_handler(event, context):
                 event=event,
                 context=context,
                 responseStatus=cfnresponse.FAILED,
-                responseData=response_body,
-                physicalResourceId="CustomResourcePhysicalID"
+                responseData=response_body
             )

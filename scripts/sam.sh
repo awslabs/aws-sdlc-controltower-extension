@@ -23,7 +23,7 @@ KMS=$(aws s3api get-bucket-encryption \
 
 echo "Deploying Control Tower Extensions - Step Functions"
 
-sam build -t ../lambdas/stepfunctions/cfn.yaml --use-container --region "${region}"
+sam build -t lambdas/stepfunctions/cfn.yaml --use-container --region "${region}"
 
 sam package \
   --template-file .aws-sam/build/template.yaml \
@@ -31,16 +31,16 @@ sam package \
   --s3-prefix "SAM" \
   --kms-key-id "${KMS}" \
   --region "${region}" \
-  --output-template-file ../lambdas/stepfunctions/generated-sam-template.yaml
+  --output-template-file lambdas/stepfunctions/generated-sam-template.yaml
 
 sam deploy \
   --stack-name CTE-SDLC-StepFunctions \
-  --template-file ../lambdas/stepfunctions/generated-sam-template.yaml \
+  --template-file lambdas/stepfunctions/generated-sam-template.yaml \
   --capabilities CAPABILITY_NAMED_IAM
 
 echo "Deploying Control Tower Extensions - Custom Resources"
 
-sam build -t ../lambdas/custom_resources/cfn.yaml --use-container --region "${region}"
+sam build -t lambdas/custom_resources/cfn.yaml --use-container --region "${region}"
 
 sam package \
   --template-file .aws-sam/build/template.yaml \
@@ -48,9 +48,9 @@ sam package \
   --s3-prefix "SAM" \
   --kms-key-id "${KMS}" \
   --region "${region}" \
-  --output-template-file ../lambdas/custom_resources/generated-sam-template.yaml
+  --output-template-file lambdas/custom_resources/generated-sam-template.yaml
 
 sam deploy \
   --stack-name CTE-SDLC-CustomResources \
-  --template-file ../lambdas/custom_resources/generated-sam-template.yaml \
+  --template-file lambdas/custom_resources/generated-sam-template.yaml \
   --capabilities CAPABILITY_NAMED_IAM

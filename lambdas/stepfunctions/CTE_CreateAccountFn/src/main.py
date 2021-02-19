@@ -92,6 +92,5 @@ def lambda_handler(event, context):
             event=payload['CustomResourceEvent'],
             context=context,
             responseStatus=cfnresponse.FAILED,
-            responseData=response_body,
-            physicalResourceId=os.environ['AWS_LAMBDA_FUNCTION_NAME']
+            responseData=response_body
         )
