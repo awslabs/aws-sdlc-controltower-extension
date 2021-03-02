@@ -48,6 +48,35 @@ def scan_provisioned_products(search_pp_name, client: boto3.client) -> dict:
                     return x
 
 
+def search_provisioned_products(search_pp_name, client: boto3.client) -> dict:
+    """Search for existing Service Catalog Provisioned Products
+
+    Args:
+        search_pp_name (str): Service Catalog Provisioned Product Name to search for
+        client (boto3.client): Boto3 Client for Service Catalog
+
+    Returns:
+        dict: Service Catalog Provisioned
+    """
+    logger.info(f"Searching for {search_pp_name}")
+    response = client.search_provisioned_products(
+        AccessLevelFilter={
+            'Key': 'Account',
+            'Value': 'self'
+        },
+        Filters={
+            'SearchQuery': [f"name:{search_pp_name}"]
+        }
+    )
+    if len(response['ProvisionedProducts']) > 0:
+        provisioned_product = response['ProvisionedProducts'][0]
+        logger.info(f"Found {provisioned_product}")
+
+        # Removing Create time since it doesn't serializable JSON well
+        del provisioned_product['CreatedTime']
+        return provisioned_product
+
+
 def build_service_catalog_parameters(parameters: dict) -> list:
     """Updates the format of the parameters to allow Service Catalog to consume them
 
