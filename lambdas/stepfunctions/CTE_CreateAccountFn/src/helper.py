@@ -49,7 +49,9 @@ def scan_provisioned_products(search_pp_name, client: boto3.client) -> dict:
 
 
 def search_provisioned_products(search_pp_name, client: boto3.client) -> dict:
-    """Search for existing Service Catalog Provisioned Products
+    """Search for existing Service Catalog Provisioned Products. If it's not found
+        then will search for any in-progress deployments since Control Tower has a
+        serial method of deploying accounts.
 
     Args:
         search_pp_name (str): Service Catalog Provisioned Product Name to search for
@@ -75,6 +77,12 @@ def search_provisioned_products(search_pp_name, client: boto3.client) -> dict:
         # Removing Create time since it doesn't serializable JSON well
         del provisioned_product['CreatedTime']
         return provisioned_product
+    else:
+        # If the product has not been provisioned yet, Since Control Tower has a serial method of deploying
+        # account this statement will check to see if there's and existing In-Progress deployment and will
+        # return provision the product name / status
+        logger.info(f"Did not find {search_pp_name}. Searching for any In-Progress Control Tower Deployments")
+        return scan_provisioned_products(search_pp_name, client)
 
 
 def build_service_catalog_parameters(parameters: dict) -> list:
