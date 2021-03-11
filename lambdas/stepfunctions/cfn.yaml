@@ -177,6 +177,7 @@ Resources:
               - sso:ListProfileAssociations
               - servicecatalog:ExecuteProvisionedProductPlan
               - servicecatalog:ScanProvisionedProducts
+              - servicecatalog:SearchProvisionedProducts
               - servicecatalog:SearchProducts
               - servicecatalog:UpdateProvisionedProduct
               - servicecatalog:UpdateProvisionedProductProperties
