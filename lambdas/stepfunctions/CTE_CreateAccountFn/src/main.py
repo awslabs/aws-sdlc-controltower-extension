@@ -10,7 +10,7 @@ import time
 import random
 import boto3
 import cfnresponse
-from helper import scan_provisioned_products, build_service_catalog_parameters, create_provision_product, \
+from helper import search_provisioned_products, build_service_catalog_parameters, create_provision_product, \
     get_provisioning_artifact_id
 
 logging.basicConfig()
@@ -51,7 +51,7 @@ def lambda_handler(event, context):
         logger.info(f"Sleeping for {sleep_time} to help reduce duplicate executions")
         time.sleep(sleep_time)
 
-        provisioned_product = scan_provisioned_products(
+        provisioned_product = search_provisioned_products(
             search_pp_name=resource_prop['ServiceCatalogParameters']['AccountName'],
             client=sc_client
         )

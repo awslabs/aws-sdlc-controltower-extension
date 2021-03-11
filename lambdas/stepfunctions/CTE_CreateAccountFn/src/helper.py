@@ -48,6 +48,43 @@ def scan_provisioned_products(search_pp_name, client: boto3.client) -> dict:
                     return x
 
 
+def search_provisioned_products(search_pp_name, client: boto3.client) -> dict:
+    """Search for existing Service Catalog Provisioned Products. If it's not found
+        then will search for any in-progress deployments since Control Tower has a
+        serial method of deploying accounts.
+
+    Args:
+        search_pp_name (str): Service Catalog Provisioned Product Name to search for
+        client (boto3.client): Boto3 Client for Service Catalog
+
+    Returns:
+        dict: Service Catalog Provisioned
+    """
+    logger.info(f"Searching for {search_pp_name}")
+    response = client.search_provisioned_products(
+        AccessLevelFilter={
+            'Key': 'Account',
+            'Value': 'self'
+        },
+        Filters={
+            'SearchQuery': [f"name:{search_pp_name}"]
+        }
+    )
+    if len(response['ProvisionedProducts']) > 0:
+        provisioned_product = response['ProvisionedProducts'][0]
+        logger.info(f"Found {provisioned_product}")
+
+        # Removing Create time since it doesn't serializable JSON well
+        del provisioned_product['CreatedTime']
+        return provisioned_product
+    else:
+        # If the product has not been provisioned yet, Since Control Tower has a serial method of deploying
+        # account this statement will check to see if there's and existing In-Progress deployment and will
+        # return provision the product name / status
+        logger.info(f"Did not find {search_pp_name}. Searching for any In-Progress Control Tower Deployments")
+        return scan_provisioned_products(search_pp_name, client)
+
+
 def build_service_catalog_parameters(parameters: dict) -> list:
     """Updates the format of the parameters to allow Service Catalog to consume them
 
