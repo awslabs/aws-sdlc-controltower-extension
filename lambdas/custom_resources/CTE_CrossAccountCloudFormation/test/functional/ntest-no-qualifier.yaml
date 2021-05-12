@@ -1,3 +1,6 @@
+# Copyright 2021 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 AWSTemplateFormatVersion: '2010-09-09'
 Description: TEST - This will execute the CrossAccountCloudFormation function without a qualifier for ServiceToken to test failure
 

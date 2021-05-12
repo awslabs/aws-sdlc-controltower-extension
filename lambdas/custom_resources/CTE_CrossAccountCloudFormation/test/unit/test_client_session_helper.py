@@ -1,3 +1,6 @@
+# Copyright 2021 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 from custom_resources.CTE_CrossAccountCloudFormation.src import client_session_helper
 import pytest
 from moto import mock_sts

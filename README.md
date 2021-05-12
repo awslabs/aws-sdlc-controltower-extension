@@ -489,6 +489,8 @@ Wait a couple minutes between creating Organizational Units.
 
 Custom Resource failed to stabilize in expected time. If you are using the Python cfn-response module, you may need to update your Lambda function code so that CloudFormation can attach the updated version.
 
+### Control Tower Troubleshooting
+https://docs.aws.amazon.com/controltower/latest/userguide/troubleshooting.html
 
 ### Packages needed for running tests
 Packages needed to run Unit Tests

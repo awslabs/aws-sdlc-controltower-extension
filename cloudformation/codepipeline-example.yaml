@@ -1,3 +1,6 @@
+# Copyright 2021 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 AWSTemplateFormatVersion: '2010-09-09'
 Description: Creates SDLC Account using Control Tower and deploys IAM Roles / KMS / S3 Buckets for an Application
   Deployment Orastrator to use.
