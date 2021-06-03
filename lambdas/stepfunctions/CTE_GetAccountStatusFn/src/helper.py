@@ -26,6 +26,9 @@ def get_outputs_from_record(rec_id: str, client: boto3.client) -> dict:
         Id=rec_id
     )
     for _op in re['RecordOutputs']:
-        outputs[_op['OutputKey']] = _op['OutputValue']
-
+        if _op.get("OutputValue"):
+            outputs[_op['OutputKey']] = _op['OutputValue']
+        else:
+            outputs[_op["OutputKey"]] = "UNAVAILABLE"
+    
     return outputs
