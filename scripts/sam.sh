@@ -34,7 +34,8 @@ sam package \
 sam deploy \
   --stack-name CTE-SDLC-StepFunctions \
   --template-file lambdas/stepfunctions/generated-sam-template.yaml \
-  --capabilities CAPABILITY_NAMED_IAM
+  --capabilities CAPABILITY_NAMED_IAM \
+  --no-fail-on-empty-changeset
 
 echo "Deploying Control Tower Extensions - Custom Resources"
 
@@ -51,4 +52,5 @@ sam package \
 sam deploy \
   --stack-name CTE-SDLC-CustomResources \
   --template-file lambdas/custom_resources/generated-sam-template.yaml \
-  --capabilities CAPABILITY_NAMED_IAM
+  --capabilities CAPABILITY_NAMED_IAM \
+  --no-fail-on-empty-changeset
