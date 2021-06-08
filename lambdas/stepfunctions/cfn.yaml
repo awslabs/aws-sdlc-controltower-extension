@@ -14,7 +14,7 @@ Resources:
         StartAt: Create Account
         States:
           Create Account:
-            Next: Wait 1 Minute (Create Account)
+            Next: Account Creation Started?
             Retry:
               - ErrorEquals:
                 - Lambda.ServiceException
@@ -34,7 +34,7 @@ Resources:
           Wait 1 Minute (Create Account):
             Type: Wait
             Seconds: 60
-            Next: Account Creation Started?
+            Next: Create Account
           Account Creation Started?:
             Type: Choice
             Choices:
@@ -45,8 +45,8 @@ Resources:
                 # Set if its an existing Provisioned Product
                 - Variable: $.Payload.ServiceCatalogEvent.Id
                   IsPresent: true
-                Next: Wait 1 Minute (Wait for Account to Complete)
-            Default: Create Account
+                Next: Get Account Status
+            Default: Wait 1 Minute (Create Account)
           Wait 1 Minute (Wait for Account to Complete):
             Type: Wait
             Seconds: 60

@@ -11,7 +11,7 @@ search for an existing account creation and will put it in a wait cycle until th
 ![alt text](images/account-provision-resources.png) 
 
 ### Step Function WorkFlow for Account creation
-![alt text](images/stepfunction-diagram.png) 
+![alt text](images/stepfunction-diagramv2.png) 
 
 ### AWS Resources Diagram for Account Stack integration
 ![alt text](images/sdlc-resource-integration.png) 
