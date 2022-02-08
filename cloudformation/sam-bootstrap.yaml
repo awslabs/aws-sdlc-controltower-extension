@@ -77,7 +77,9 @@ Resources:
             Effect: Deny
             Principal: '*'
             Action: s3:*
-            Resource: !Sub ${rControlTowerExtensionBucket.Arn}/*
+            Resource:
+              - !Sub ${rControlTowerExtensionBucket.Arn}/*
+              - !Sub ${rControlTowerExtensionBucket.Arn}
             Condition:
               Bool:
                 aws:SecureTransport: 'false'

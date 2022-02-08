@@ -374,7 +374,9 @@ Resources:
                       Effect: Deny
                       Principal: '*'
                       Action: s3:*
-                      Resource: {"&Fn::Sub": "${rOrchestrationArtifactBucket.Arn}/*"}
+                      Resource:
+                        - {"&Fn::Sub": "${rOrchestrationArtifactBucket.Arn}/*"}
+                        - {"&Fn::Sub": "${rOrchestrationArtifactBucket.Arn}"}
                       Condition:
                         Bool:
                           aws:SecureTransport: 'false'
