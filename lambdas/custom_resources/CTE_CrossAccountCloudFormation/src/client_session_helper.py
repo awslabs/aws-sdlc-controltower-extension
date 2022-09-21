@@ -1,14 +1,15 @@
 # Copyright 2021 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0
 
+import os
 import logging
 import boto3
 import botocore.exceptions as ex
 
-logging.basicConfig()
-logger = logging.getLogger()
+LOG_LEVEL = os.getenv('LOG_LEVEL', 'INFO')
+LOGGER = logging.getLogger()
+LOGGER.setLevel(getattr(logging, LOG_LEVEL.upper(), logging.INFO))
 logging.getLogger("botocore").setLevel(logging.ERROR)
-logger.setLevel(logging.INFO)
 
 
 def boto3_session(region=None, credentials=None, profile=None):
@@ -22,8 +23,7 @@ def boto3_session(region=None, credentials=None, profile=None):
     Returns:
         :obj:`boto3.session`: Returns a boto3 session object
     """
-    args = dict()
-    args['region_name'] = region
+    args = {'region_name': region}
     try:
         if profile:
             args['profile_name'] = profile
@@ -43,9 +43,9 @@ def boto3_session(region=None, credentials=None, profile=None):
         return session
 
     except BaseException as e:
-        raise ex.SessionException(
+        raise Exception(
             f"Failed to establish session to AWS: {str(e)}"
-        )
+        ) from e
 
 
 def boto3_client(service, assumed_credentials=None, session=None, region=None, profile=None):
@@ -61,9 +61,7 @@ def boto3_client(service, assumed_credentials=None, session=None, region=None, p
     Returns:
         :obj:`boto3.client`: Returns a boto3 session object
     """
-    args = dict()
-    args['service_name'] = service
-    args['region_name'] = region
+    args = {'service_name': service, 'region_name': region}
 
     if not session:
         session = boto3_session(profile)
@@ -84,6 +82,6 @@ def boto3_client(service, assumed_credentials=None, session=None, region=None, p
         return client
 
     except BaseException as e:
-        raise ex.ClientException(
+        raise Exception(
             f"Failed to establish client with AWS: {str(e)}"
-        )
+        ) from e

@@ -10,7 +10,7 @@ echo "#-----------------------------------------------#" | tee -a "${OUTPUT_FILE
 echo "#   Scanning Python code for Vulnerabilities     " | tee -a "${OUTPUT_FILE}"
 echo "#-----------------------------------------------#" | tee -a "${OUTPUT_FILE}"
 echo "Output File: "${OUTPUT_FILE}""
-bandit --recursive ../lambdas | tee -a "${OUTPUT_FILE}"
+bandit --recursive lambdas | tee -a "${OUTPUT_FILE}"
 
 echo "#-----------------------------------------------#" | tee -a "${OUTPUT_FILE}"
 echo "#   Scanning Python depend for Vulnerabilities   " | tee -a "${OUTPUT_FILE}"

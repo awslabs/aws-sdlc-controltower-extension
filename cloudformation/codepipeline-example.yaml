@@ -3,7 +3,7 @@
 
 AWSTemplateFormatVersion: '2010-09-09'
 Description: Creates SDLC Account using Control Tower and deploys IAM Roles / KMS / S3 Buckets for an Application
-  Deployment Orastrator to use.
+  Deployment Orchestrator to use.
 
 Metadata:
   AWS::CloudFormation::Interface:

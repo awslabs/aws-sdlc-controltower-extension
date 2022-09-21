@@ -29,8 +29,8 @@ search for an existing account creation and will put it in a wait cycle until th
 | lambdas/stepfunctions/CTE_InvokeCreateAccountFn     | A Custom Resource that will initiate the Create Account Step Function. |
 | scripts   | Directory that has the scripts that will be run to scan / lint / deploy the AWS Lambda Functions. |
 | scripts/main.sh | An orchestration script that will run the all other linting/scanning scripts before building/deploying the SAM Function(s). | 
-| scripts/pylint.sh   | Shell script that will run the ```pylint``` command against all python files. |
-| scripts/pyscan.sh   | Executes Bandit (python lib) against all python code within the repository to identify any security vulnerabilities. |
+| scripts/lint.sh   | Shell script that will run the ```pylint``` command against all python files. |
+| scripts/scan.sh   | Executes Bandit (python lib) against all python code within the repository to identify any security vulnerabilities. |
 | scripts/sam.sh   | Executes a number of SAM commands to package / build / deploy the SAM Function to a specified account. | 
 | scripts/test.sh   | Shell script that will run the ```tox``` command to build a virtual environment and the ```pytest``` command to run any unit tests found in the repository. |
 | pytest.ini   | ini files are the configuration files of the tox project, and can also be used to hold pytest configuration if they have a [pytest] section. |
@@ -180,9 +180,9 @@ For this example S3 Bucket Access Logging is not enabled but is recommended that
 - Execute the cloudformation/sam-bootstrap.yaml into the AWS Management Account where the AWS Control Tower will live.
   ```bash
   LOCAL_ROLE_ARN=$(aws sts get-caller-identity --query 'Arn' --output text | sed -e 's/assumed-//g' | sed -e 's/\/botocore-session-[0-9]*//g')
-  aws cloudformation create-stack --stack-name SDLC-ControlTowerExtension-Bootstrap \
-    --template-body file://cloudformation/sam-bootstrap.yaml \
-    --parameters ParameterKey=pRoleArn,ParameterValue=${LOCAL_ROLE_ARN}\
+  aws cloudformation deploy --stack-name SDLC-ControlTowerExtension-Bootstrap \
+    --template-file cloudformation/sam-bootstrap.yaml \
+    --parameter-overrides pRoleArn=${LOCAL_ROLE_ARN}\
     --capabilities CAPABILITY_NAMED_IAM
   ```  
 - Create ALL required Organizational Units within AWS Control Tower
@@ -215,40 +215,10 @@ For this example S3 Bucket Access Logging is not enabled but is recommended that
 
 ### Deploying Serverless Templates
 These templates include the AWS StepFunction as well as all the Lambda Functions themselves.  The Lambda Function along 
-with the CloudFormation to deploy them **cfn.yaml** are located in the "lambdas" directory.
+with the CloudFormation to deploy them **serverless.yaml** are located in the "lambdas" directory.
 - Deploy Serverless Application Model function.
   ```bash 
   ./scripts/sam.sh 
-  ```
-
-### Post Serverless Install
-- Add AWSControlTowerExecution IAM Role as a Constraint for "AWS Control Tower Account Factory Portfolio" 
-    - This allows the execution of the Provisioned Product to run as that IAM Role
-  
-
-- Add CTE-SDLC-StepFunctions-rCTECreateAccountFnRole-* and CTE-SDLC-StepFunctions-rCTEGetAccountStatusFnRole-* as IAM 
-Roles that have access to the "AWS Control Tower Account Factory Portfolio". 
-  ```bash
-  # Get Portfolio Id
-  PORTFOLIO_ID=$(aws servicecatalog list-portfolios \
-    --query 'PortfolioDetails[?starts_with(DisplayName, `AWS Control Tower Account Factory Portfolio`)].Id' \
-    --output text)
-  
-  # Add CTE-SDLC Roles to Control Tower Portfolio 
-  aws servicecatalog associate-principal-with-portfolio \
-    --portfolio-id "${PORTFOLIO_ID}" \
-    --principal-arn $(aws iam list-roles --query 'Roles[?starts_with(RoleName, `CTE-SDLC-StepFunctions-rCTEGetAccountStatusFnRole-`)].Arn' --output text) \
-    --principal-type IAM
-  aws servicecatalog associate-principal-with-portfolio \
-    --portfolio-id "${PORTFOLIO_ID}" \
-    --principal-arn $(aws iam list-roles --query 'Roles[?starts_with(RoleName, `CTE-SDLC-StepFunctions-rCTECreateAccountFnRole-`)].Arn' --output text) \
-    --principal-type IAM
-  
-  # Add Current User/Role to Control Tower Portfolio 
-  aws servicecatalog associate-principal-with-portfolio \
-    --portfolio-id "${PORTFOLIO_ID}" \
-    --principal-arn "${LOCAL_ROLE_ARN}" \
-    --principal-type IAM 
   ```
 
 ## Custom Resource 
@@ -319,7 +289,7 @@ Resources:
         SSOUserFirstName: John
         SSOUserLastName: Doe
         SSOUserEmail: john.doe@example.com
-        ManagedOrganizationalUnit: SampleOU_Prod
+        ManagedOrganizationalUnit: SampleOU:Prod
 
   rCreateTestAccount:
     Type: Custom::InvokeCreateAccountFn
@@ -332,7 +302,7 @@ Resources:
         SSOUserFirstName: John
         SSOUserLastName: Doe
         SSOUserEmail: john.doe@example.com
-        ManagedOrganizationalUnit: SampleOU_Test
+        ManagedOrganizationalUnit: SampleOU:Test
 ```
 
 ### CTE_CrossAccountCloudFormation

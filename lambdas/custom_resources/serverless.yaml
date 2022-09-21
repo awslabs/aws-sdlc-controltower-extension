@@ -9,7 +9,7 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       Handler: main.lambda_handler
-      Runtime: python3.7
+      Runtime: python3.9
       FunctionName: CTE_CrossAccountCloudFormation
       Description: This function will allow you to deploy a CloudFormation Stack across accounts.
       Timeout: 900

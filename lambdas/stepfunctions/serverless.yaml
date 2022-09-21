@@ -4,6 +4,10 @@
 Transform: 'AWS::Serverless-2016-10-31'
 Description: Custom Resource
 
+Parameters:
+  pControlTowerPortfolioId:
+    Type: String
+
 Resources:
   # https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/sam-resource-statemachine.html
   rCTEAcountCreationStateMachine:
@@ -29,7 +33,7 @@ Resources:
             Type: Task
             Resource: arn:aws:states:::lambda:invoke
             Parameters:
-              FunctionName: !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:CTE_CreateAccountFn
+              FunctionName: !Sub arn:${AWS::Partition}:lambda:${AWS::Region}:${AWS::AccountId}:function:CTE_CreateAccountFn
               Payload.$: $
           Wait 1 Minute (Create Account):
             Type: Wait
@@ -39,10 +43,10 @@ Resources:
             Type: Choice
             Choices:
               - Or:
-                # Set if its a new Provisioned Product
+                # Set if it's a new Provisioned Product
                 - Variable: $.Payload.ServiceCatalogEvent.ProvisionedProductId
                   IsPresent: true
-                # Set if its an existing Provisioned Product
+                # Set if it's an existing Provisioned Product
                 - Variable: $.Payload.ServiceCatalogEvent.Id
                   IsPresent: true
                 Next: Get Account Status
@@ -64,7 +68,7 @@ Resources:
             Type: Task
             Resource: arn:aws:states:::lambda:invoke
             Parameters:
-              FunctionName: !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:CTE_GetAccountStatusFn
+              FunctionName: !Sub arn:${AWS::Partition}:lambda:${AWS::Region}:${AWS::AccountId}:function:CTE_GetAccountStatusFn
               Payload.$: $
           Account Creation Complete?:
             Type: Choice
@@ -89,7 +93,7 @@ Resources:
             Type: Task
             Resource: arn:aws:states:::lambda:invoke
             Parameters:
-              FunctionName: !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:CTE_SignalCfnResponseFn
+              FunctionName: !Sub arn:${AWS::Partition}:lambda:${AWS::Region}:${AWS::AccountId}:function:CTE_SignalCfnResponseFn
               Payload.$: $
         TimeoutSeconds: 7200
       Policies:
@@ -97,9 +101,9 @@ Resources:
           - Effect: Allow
             Action: lambda:InvokeFunction
             Resource:
-            - !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:CTE_SignalCfnResponseFn
-            - !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:CTE_CreateAccountFn
-            - !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:CTE_GetAccountStatusFn
+            - !Sub arn:${AWS::Partition}:lambda:${AWS::Region}:${AWS::AccountId}:function:CTE_SignalCfnResponseFn
+            - !Sub arn:${AWS::Partition}:lambda:${AWS::Region}:${AWS::AccountId}:function:CTE_CreateAccountFn
+            - !Sub arn:${AWS::Partition}:lambda:${AWS::Region}:${AWS::AccountId}:function:CTE_GetAccountStatusFn
           - Effect: Allow
             Action:
             - xray:PutTraceSegments
@@ -195,6 +199,13 @@ Resources:
       LogGroupName: !Sub "/aws/lambda/${rCTECreateAccountFn}"
       RetentionInDays: 7
 
+  rCTECreateAccountFnPortfolioPrincipalAssociation:
+    Type: AWS::ServiceCatalog::PortfolioPrincipalAssociation
+    Properties:
+      PortfolioId: !Ref pControlTowerPortfolioId
+      PrincipalARN: !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:role/${rCTECreateAccountFnRole}
+      PrincipalType: IAM
+
   # ----------------------
   # CTE_GetAccountStatusFn
   # ----------------------
@@ -223,6 +234,13 @@ Resources:
     Properties:
       LogGroupName: !Sub "/aws/lambda/${rCTEGetAccountStatusFn}"
       RetentionInDays: 7
+
+  rCTEGetAccountStatusFnPortfolioPrincipalAssociation:
+    Type: AWS::ServiceCatalog::PortfolioPrincipalAssociation
+    Properties:
+      PortfolioId: !Ref pControlTowerPortfolioId
+      PrincipalARN: !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:role/${rCTEGetAccountStatusFnRole}
+      PrincipalType: IAM
 
   # ----------------------
   # CTE_SignalWaitConditionTaskFn

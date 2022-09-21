@@ -1,15 +1,16 @@
 # Copyright 2021 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0
 
+import os
 import logging
 import time
 import re
 from functools import wraps
 
-logging.basicConfig()
-logger = logging.getLogger()
+LOG_LEVEL = os.getenv('LOG_LEVEL', 'INFO')
+LOGGER = logging.getLogger()
+LOGGER.setLevel(getattr(logging, LOG_LEVEL.upper(), logging.INFO))
 logging.getLogger("botocore").setLevel(logging.ERROR)
-logger.setLevel(logging.INFO)
 
 
 def retry_v2(max_attempts: int = 5, delay: int = 3, error_code='TooManyRequestsException', error_message='None'):
@@ -34,9 +35,9 @@ def retry_v2(max_attempts: int = 5, delay: int = 3, error_code='TooManyRequestsE
                     return function(*args, **kwargs)
 
                 except Exception as e:
-                    logger.warning(e)
+                    LOGGER.warning(e)
                     if error_message and re.search(error_message, str(e)):
-                        logger.warning(
+                        LOGGER.warning(
                             f"Definition failed:{function.__name__} with '{error_message}' message, trying again "
                             f"in {delay} seconds..."
                         )
@@ -45,7 +46,7 @@ def retry_v2(max_attempts: int = 5, delay: int = 3, error_code='TooManyRequestsE
                         last_exception = e
 
                     elif e.response['Error']['Code'] == error_code:
-                        logger.warning(
+                        LOGGER.warning(
                             f"Definition failed:{function.__name__} with '{error_code}' error code, trying again "
                             f"in {delay} seconds..."
                         )
@@ -56,7 +57,7 @@ def retry_v2(max_attempts: int = 5, delay: int = 3, error_code='TooManyRequestsE
                     else:
                         raise e
 
-            logger.error(f"Was not successfully able to complete the request after {max_attempts} attempts")
+            LOGGER.error(f"Was not successfully able to complete the request after {max_attempts} attempts")
             raise last_exception
 
         return wrapper

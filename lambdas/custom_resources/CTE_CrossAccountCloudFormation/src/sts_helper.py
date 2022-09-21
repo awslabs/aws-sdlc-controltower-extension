@@ -6,11 +6,10 @@ import logging
 from helper import retry_v2
 from client_session_helper import boto3_client
 
-
-logging.basicConfig()
-logger = logging.getLogger()
+LOG_LEVEL = os.getenv('LOG_LEVEL', 'INFO')
+LOGGER = logging.getLogger()
+LOGGER.setLevel(getattr(logging, LOG_LEVEL.upper(), logging.INFO))
 logging.getLogger("botocore").setLevel(logging.ERROR)
-logger.setLevel(logging.INFO)
 
 function_name = os.environ['AWS_LAMBDA_FUNCTION_NAME']
 
@@ -30,7 +29,7 @@ def assume_role_arn(role_arn, role_session_name=function_name, profile=None):
     Returns:
         dict: Returns standard AWS dictionary with credential details
     """
-    logger.info(f"Assuming Role:{role_arn}")
+    LOGGER.info(f"Assuming Role:{role_arn}")
     sts_client = boto3_client(service='sts', profile=profile)
 
     assumed_role_object = sts_client.assume_role(

@@ -1,6 +1,7 @@
 # Copyright 2021 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0
 
+import os
 import ast
 import logging
 import json
@@ -10,27 +11,27 @@ from cfn_helper import create_update_stack, describe_stack, delete_stack, enable
     disable_termination_protection
 from client_session_helper import boto3_session
 
-logging.basicConfig()
-logger = logging.getLogger()
+LOG_LEVEL = os.getenv('LOG_LEVEL', 'INFO')
+LOGGER = logging.getLogger()
+LOGGER.setLevel(getattr(logging, LOG_LEVEL.upper(), logging.INFO))
 logging.getLogger("botocore").setLevel(logging.ERROR)
-logger.setLevel(logging.INFO)
 
 
 def lambda_handler(event, context):
     print(json.dumps(event))
-    response_data = dict()
+    response_data = {}
     response = None
     description = ''
     config = event['ResourceProperties']['Parameters']['Configuration']
     base_stack_name = config['StackName']
     resources = config['Resources']
-    outputs = dict()
-    regions = list()
+    outputs = {}
+    regions = []
     count = 1
 
     # This will replace to all for local supported functions to ensure they will run as expected
     resources = ast.literal_eval(json.dumps(resources).replace("&Ref", "Ref").replace("&Fn", "Fn"))
-    logger.debug(f"Resources Post Replace:{resources}")
+    LOGGER.debug(f"Resources Post Replace:{resources}")
 
     # Get tags from Cfn Configuration
     tags = config.get('Tags')
@@ -50,17 +51,17 @@ def lambda_handler(event, context):
     try:
         outputs = config.get('Outputs', {})
         outputs = ast.literal_eval(json.dumps(outputs).replace("&Ref", "Ref").replace("&Fn", "Fn"))
-        logger.debug(f"Outputs Post Replace:{outputs}")
+        LOGGER.debug(f"Outputs Post Replace:{outputs}")
 
     except Exception as e:
-        logger.warning(e)
-        logger.warning(f"No Outputs found from template {config['StackName']}")
+        LOGGER.warning(e)
+        LOGGER.warning(f"No Outputs found from template {config['StackName']}")
 
-    # Get the number of regions it will deploy to to allow for proper Cfn Outputs
+    # Get the number of regions it will deploy to allow for proper Cfn Outputs
     num_of_regions = len(regions)
 
     for region in regions:
-        logger.info(f"Running in Region:{region}")
+        LOGGER.info(f"Running in Region:{region}")
         config['StackName'] = base_stack_name.replace('%_REGION_%', region)
         _resources = json.loads(json.dumps(resources).replace("%_REGION_%", region))
 
@@ -69,7 +70,7 @@ def lambda_handler(event, context):
             session = boto3_session(region=region, credentials=credentials)
 
         except Exception as e:
-            logger.error(f"Assume Role Error:{e}", exc_info=True)
+            LOGGER.error(f"Assume Role Error:{e}", exc_info=True)
             response_data['ERROR'] = str(e)
             cfnresponse.send(
                 event=event,
@@ -97,7 +98,7 @@ def lambda_handler(event, context):
                 return
 
             except Exception as e:
-                logger.error(f"Deleting Stack Error:{e}", exc_info=True)
+                LOGGER.error(f"Deleting Stack Error:{e}", exc_info=True)
                 response_data['ERROR'] = str(e)
                 cfnresponse.send(
                     event=event,
@@ -109,10 +110,10 @@ def lambda_handler(event, context):
 
         else:
             try:
-                logger.debug(f"Deployed Resources:{_resources}")
+                LOGGER.debug(f"Deployed Resources:{_resources}")
                 template = {
                     "AWSTemplateFormatVersion": "2010-09-09",
-                    "Description": "{}(Lambda:CrossAccountCloudFormation)".format(description),
+                    "Description": f"{description}(Lambda:CrossAccountCloudFormation)",
                     "Resources": _resources,
                     "Outputs": outputs
                 }
@@ -138,16 +139,16 @@ def lambda_handler(event, context):
                                 else:
                                     response_data[output["OutputKey"]] = output["OutputValue"]
                         else:
-                            logger.info('Not Stack Outputs Found')
+                            LOGGER.info('Not Stack Outputs Found')
 
                     except Exception as e:
-                        logger.error(f"Error getting Stack Details:{e}", exc_info=True)
+                        LOGGER.error(f"Error getting Stack Details:{e}", exc_info=True)
                         raise
 
                 if config.get('TerminationProtection') and (config['TerminationProtection'].lower() == 'true'):
                     enable_termination_protection(stack_name=config['StackName'], session=session)
 
-                logger.debug(f"response_data:{response_data}")
+                LOGGER.debug(f"response_data:{response_data}")
                 cfnresponse.send(
                     event=event,
                     context=context,
@@ -156,7 +157,7 @@ def lambda_handler(event, context):
                 )
 
             except Exception as e:
-                logger.error(f"Main Function Error:{e}", exc_info=True)
+                LOGGER.error(f"Main Function Error:{e}", exc_info=True)
                 if response:
                     response_data['ERROR'] = f"{response} - {str(e)}"
 

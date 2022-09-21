@@ -3,7 +3,7 @@
 
 AWSTemplateFormatVersion: '2010-09-09'
 Description: Creates SDLC Account using Control Tower and deploys IAM Roles / KMS / S3 Buckets for an Application
-  Deployment Orastrator to use.
+  Deployment Orchestrator to use.
 
 Metadata:
   AWS::CloudFormation::Interface:
@@ -17,8 +17,6 @@ Metadata:
           - pSSOUserEmail
           - pDevAccountEmail
           - pDevOrganizationalUnit
-          - pTestAccountEmail
-          - pTestOrganizationalUnit
           - pProdAccountEmail
           - pProdOrganizationalUnit
           - pDeplAccountEmail
@@ -35,16 +33,12 @@ Metadata:
         default: "SSO Users Email Address"
       pDevAccountEmail:
         default: "Development Account Root Email"
-      pTestAccountEmail:
-        default: "Test Account Root Email"
       pProdAccountEmail:
         default: "Production Account Root Email"
       pDeplAccountEmail:
         default: "Deployment Account Root Email"
       pDevOrganizationalUnit:
         default: "Development Account Organizational Unit"
-      pTestOrganizationalUnit:
-        default: "Test Account Organizational Unit"
       pProdOrganizationalUnit:
         default: "Production Account Organizational Unit"
       pDeplOrganizationalUnit:
@@ -63,16 +57,12 @@ Parameters:
   # Account Root Email Addresses
   pDevAccountEmail:
     Type: String
-  pTestAccountEmail:
-    Type: String
   pProdAccountEmail:
     Type: String
   pDeplAccountEmail:
     Type: String
   # Account Organizational Unit
   pDevOrganizationalUnit:
-    Type: String
-  pTestOrganizationalUnit:
     Type: String
   pProdOrganizationalUnit:
     Type: String
@@ -82,7 +72,6 @@ Parameters:
 Resources:
   rCreateDevAccount:
     Type: Custom::InvokeCreateAccountFn
-    DependsOn: rCreateTestAccount
     Properties:
       ServiceToken: !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:CTE_InvokeCreateAccountFn
       CreateAccountSfn: !Sub arn:aws:states:${AWS::Region}:${AWS::AccountId}:stateMachine:CTE_SDLC_Integration
@@ -93,20 +82,6 @@ Resources:
         SSOUserLastName: !Ref pSSOUserLastName
         SSOUserEmail: !Ref pSSOUserEmail
         ManagedOrganizationalUnit: !Ref pDevOrganizationalUnit
-
-  rCreateTestAccount:
-    Type: Custom::InvokeCreateAccountFn
-    DependsOn: rCreateProdAccount
-    Properties:
-      ServiceToken: !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:CTE_InvokeCreateAccountFn
-      CreateAccountSfn: !Sub arn:aws:states:${AWS::Region}:${AWS::AccountId}:stateMachine:CTE_SDLC_Integration
-      ServiceCatalogParameters:
-        AccountName: !Sub ${pAccountNamePrefix}-test
-        AccountEmail: !Ref pTestAccountEmail
-        SSOUserFirstName: !Ref pSSOUserFirstName
-        SSOUserLastName: !Ref pSSOUserLastName
-        SSOUserEmail: !Ref pSSOUserEmail
-        ManagedOrganizationalUnit: !Ref pTestOrganizationalUnit
 
   rCreateProdAccount:
     Type: Custom::InvokeCreateAccountFn
@@ -140,6 +115,7 @@ Resources:
   # ------
   rDevOrchestrationRoles:
     Type: Custom::CTE_CrossAccountCloudFormation
+    DependsOn: rDeplOrchestrationRoles
     Properties:
       ServiceToken: !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:CTE_CrossAccountCloudFormation
       Parameters:
@@ -175,45 +151,9 @@ Resources:
             oOrganizationActionRoleArn:
               Value: {"&Fn::GetAtt": ["rOrganizationActionRole", "Arn"]}
 
-  rTestOrchestrationRoles:
-    Type: Custom::CTE_CrossAccountCloudFormation
-    Properties:
-      ServiceToken: !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:CTE_CrossAccountCloudFormation
-      Parameters:
-        Configuration:
-          RoleArn: !Sub arn:aws:iam::${rCreateTestAccount.AccountId}:role/AWSControlTowerExecution
-          Capabilities: CAPABILITY_NAMED_IAM
-          StackName: Orchestration-IAM-Roles
-          Description: IAM Roles for the Deployment environment to setup an SDLC Account Stack
-          #TerminationProtection: true
-          Resources:
-            rOrganizationActionRole:
-              Type: AWS::IAM::Role
-              Properties:
-                RoleName: Orchestration-Action
-                Path: "/"
-                AssumeRolePolicyDocument:
-                  Version: 2012-10-17
-                  Statement:
-                    - Effect: Allow
-                      Principal:
-                        AWS:
-                          - !Sub arn:aws:iam::${rCreateDeplAccount.AccountId}:role/Orchestration-Service
-                        Service:
-                          - cloudformation.amazonaws.com
-                          - lambda.amazonaws.com
-                          - servicecatalog.amazonaws.com
-                          - codebuild.amazonaws.com
-                      Action:
-                        - sts:AssumeRole
-                ManagedPolicyArns:
-                  - arn:aws:iam::aws:policy/AdministratorAccess
-          Outputs:
-            oOrganizationActionRoleArn:
-              Value: {"&Fn::GetAtt": ["rOrganizationActionRole", "Arn"]}
-
   rProdOrchestrationRoles:
     Type: Custom::CTE_CrossAccountCloudFormation
+    DependsOn: rDeplOrchestrationRoles
     Properties:
       ServiceToken: !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:CTE_CrossAccountCloudFormation
       Parameters:
@@ -343,7 +283,6 @@ Resources:
                       Principal:
                         AWS:
                           - !GetAtt rDevOrchestrationRoles.oOrganizationActionRoleArn
-                          - !GetAtt rTestOrchestrationRoles.oOrganizationActionRoleArn
                           - !GetAtt rProdOrchestrationRoles.oOrganizationActionRoleArn
                       Action:
                         - kms:Encrypt
@@ -419,7 +358,6 @@ Resources:
                       Principal:
                         AWS:
                           - !GetAtt rDevOrchestrationRoles.oOrganizationActionRoleArn
-                          - !GetAtt rTestOrchestrationRoles.oOrganizationActionRoleArn
                           - !GetAtt rProdOrchestrationRoles.oOrganizationActionRoleArn
                           - !GetAtt rDeplOrchestrationRoles.oOrganizationActionRoleArn
           Outputs:

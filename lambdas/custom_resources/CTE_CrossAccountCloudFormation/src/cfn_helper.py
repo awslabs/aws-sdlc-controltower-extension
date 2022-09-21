@@ -1,6 +1,7 @@
 # Copyright 2021 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0
 
+import os
 import re
 import json
 import time
@@ -11,10 +12,10 @@ from client_session_helper import boto3_client
 from helper import retry_v2
 from cfn_tools import load_yaml
 
-logging.basicConfig()
-logger = logging.getLogger()
+LOG_LEVEL = os.getenv('LOG_LEVEL', 'INFO')
+LOGGER = logging.getLogger()
+LOGGER.setLevel(getattr(logging, LOG_LEVEL.upper(), logging.INFO))
 logging.getLogger("botocore").setLevel(logging.ERROR)
-logger.setLevel(logging.INFO)
 
 
 def create_update_stack(stack_name, template, cfn_params, capability, region='us-east-1', waiter=False, tags=None, session=None):
@@ -36,13 +37,9 @@ def create_update_stack(stack_name, template, cfn_params, capability, region='us
         dict: Standard AWS response dict
     """
     # Setup default arguments for cfn
-    args = dict()
-    args['StackName'] = stack_name
-    args['Capabilities'] = list()
-    args['session'] = session
+    args = {'StackName': stack_name, 'Capabilities': [], 'session': session, 'TemplateBody': json.dumps(template)}
 
     # Setup CloudFormation Path and/or Body
-    args['TemplateBody'] = json.dumps(template)
     template_body = args['TemplateBody']
 
     # Does CloudFormation Stack already Exists
@@ -82,14 +79,14 @@ def create_update_stack(stack_name, template, cfn_params, capability, region='us
     if stack_exists:
         # if stack exists get integration existing / override parameters
         if stack_exists['Stacks'][0].get('Parameters'):
-            logger.info(f"Parameters found in existing Cfn Stack ({stack_name})")
+            LOGGER.info(f"Parameters found in existing Cfn Stack ({stack_name})")
             parameters = update_parameters(
                 override_parameters=cfn_params,
                 current_parameters=stack_exists['Stacks'][0]['Parameters']
             )
 
         else:
-            logger.info(f"No Parameters found in existing Cfn Stack ({stack_name})")
+            LOGGER.info(f"No Parameters found in existing Cfn Stack ({stack_name})")
             parameters = update_parameters(override_parameters=cfn_params)
 
         args['Parameters'] = remove_unused_parameters(template=template_body, parameters=parameters)
@@ -98,7 +95,7 @@ def create_update_stack(stack_name, template, cfn_params, capability, region='us
 
     else:
         args['Parameters'] = update_parameters(override_parameters=cfn_params)
-        logger.info(f"Parameters:{args['Parameters']}")
+        LOGGER.info(f"Parameters:{args['Parameters']}")
         response = create_stack(**args)
         cfn_action = 'stack_create_complete'
 
@@ -106,7 +103,7 @@ def create_update_stack(stack_name, template, cfn_params, capability, region='us
     if response and waiter:
         stack_id = response['StackId']
         stack_url = f"https://console.aws.amazon.com/cloudformation/home?region={region}#/stack/detail?stackId={re.sub('/', '%2F', stack_id)}"
-        logger.info("Waiting for CloudFormation Stack to complete")
+        LOGGER.info("Waiting for CloudFormation Stack to complete")
         wait_for_stack_complete(stack_name=stack_name, stack_url=stack_url, cfn_action=cfn_action, session=session)
 
     return response
@@ -124,9 +121,9 @@ def update_parameters(override_parameters=None, current_parameters=None):
         list: A list of CloudFormation Parameters
     """
     # Parameters with override values
-    parameters = list()
-    logger.info(f"Override Parameters:{override_parameters}")
-    logger.info(f"Current Parameters:{current_parameters}")
+    parameters = []
+    LOGGER.info(f"Override Parameters:{override_parameters}")
+    LOGGER.info(f"Current Parameters:{current_parameters}")
 
     if current_parameters:
         for c_param in current_parameters:
@@ -134,17 +131,17 @@ def update_parameters(override_parameters=None, current_parameters=None):
 
     if override_parameters and isinstance(override_parameters, dict):
         if override_parameters.get('Parameters'):
-            logger.info('Found "Parameters" section in dict, using that value for all parameters.')
+            LOGGER.info('Found "Parameters" section in dict, using that value for all parameters.')
             override_parameters = override_parameters['Parameters']
 
         for key, value in override_parameters.items():
             # Parse through list to see if it needs to be updated.
             for parameter in parameters:
                 if key == parameter['ParameterKey'] and value != parameter['ParameterValue']:
-                    logger.info(f'Removing {{"ParameterKey": {key}, "ParameterValue": {parameter["ParameterValue"]} }}')
+                    LOGGER.info(f'Removing {{"ParameterKey": {key}, "ParameterValue": {parameter["ParameterValue"]} }}')
                     parameters.remove({"ParameterKey": key, "ParameterValue": parameter["ParameterValue"]})
 
-            logger.info(f'Adding {{"ParameterKey": {str(key)}, "ParameterValue": {str(value)}}})')
+            LOGGER.info(f'Adding {{"ParameterKey": {str(key)}, "ParameterValue": {str(value)}}})')
             temp = {"ParameterKey": str(key), "ParameterValue": str(value)}
             parameters.append(temp)
 
@@ -157,14 +154,14 @@ def update_parameters(override_parameters=None, current_parameters=None):
                 for c_param in parameters:
                     if o_param['ParameterKey'] == c_param['ParameterKey'] and \
                             o_param['ParameterValue'] != c_param['ParameterValue']:
-                        logger.info(
+                        LOGGER.info(
                             f"Replacing Parameter:{o_param['ParameterKey']} with Value:{o_param['ParameterValue']}")
                         parameters.remove(
                             {"ParameterKey": c_param['ParameterKey'], "ParameterValue": c_param['ParameterValue']})
                         parameters.append(
                             {"ParameterKey": o_param['ParameterKey'], "ParameterValue": o_param['ParameterValue']})
 
-    logger.info(f"New Deployment Parameters:{parameters}")
+    LOGGER.info(f"New Deployment Parameters:{parameters}")
     return parameters
 
 
@@ -179,24 +176,24 @@ def remove_unused_parameters(template, parameters):
     Returns:
         str: Returns the StackStatus message from the response
     """
-    return_parameters = list()
-    logger.info(f"Scanning Parameters to be removed - {parameters}")
-    logger.debug(f"template:{template}")
+    return_parameters = []
+    LOGGER.info(f"Scanning Parameters to be removed - {parameters}")
+    LOGGER.debug(f"template:{template}")
     cfn_template = load_yaml(template)
     template_params = cfn_template.get('Parameters')
     if template_params:
-        logger.info(f"Template Parameters:{template_params}")
+        LOGGER.info(f"Template Parameters:{template_params}")
         template_parameters_keys = template_params.keys()
 
         for parameter in parameters:
-            logger.debug(f"Checking Parameter:{parameter} against template_parameters_keys:{template_parameters_keys}")
+            LOGGER.debug(f"Checking Parameter:{parameter} against template_parameters_keys:{template_parameters_keys}")
             param_value = parameter['ParameterKey']
             if param_value in template_parameters_keys:
-                logger.info(f"Found Parameter:{param_value} in template, appending to return parameter list")
+                LOGGER.info(f"Found Parameter:{param_value} in template, appending to return parameter list")
                 return_parameters.append(parameter)
 
             else:
-                logger.info(f"Parameter:{param_value} was not found in template")
+                LOGGER.info(f"Parameter:{param_value} was not found in template")
 
     return return_parameters
 
@@ -211,9 +208,9 @@ def get_stack_status(stack_name, session=None):
     Returns:
         str: Returns the StackStatus message from the response
     """
-    logger.debug(f"Checking CloudFormation Status of {stack_name}")
+    LOGGER.debug(f"Checking CloudFormation Status of {stack_name}")
     response = describe_stack(stack_name=stack_name, session=session)
-    logger.debug(f"Describe Stack Response:{response}")
+    LOGGER.debug(f"Describe Stack Response:{response}")
     return response['Stacks'][0]['StackStatus']
 
 
@@ -240,20 +237,20 @@ def wait_all_stacks(stack_list):
     ]
     duration = 30
     timeout = 1
-    failed_list = list()
+    failed_list = []
 
     # Stack_list [{"StackName": name, "AssumedCredentials": creds}]
     while stack_list and duration > timeout:
         for stack in stack_list:
             remove_stack_list = False
             stack_status = get_stack_status(stack_name=stack['Name'], session=stack['Session'])
-            logger.info(f"Stack ({stack['Name']}) Status:{stack_status}")
+            LOGGER.info(f"Stack ({stack['Name']}) Status:{stack_status}")
             if stack_status in successful_cfn_list:
-                logger.info(f"{stack['Name']} was successful, removing from Status list")
+                LOGGER.info(f"{stack['Name']} was successful, removing from Status list")
                 remove_stack_list = True
 
             elif stack_status in failure_cfn_list:
-                logger.info(f"{stack['Name']} was failed, removing from Status list and getting more information")
+                LOGGER.info(f"{stack['Name']} was failed, removing from Status list and getting more information")
                 failure = determine_stack_failure_event(stack_name=stack['Name'], session=stack['Session'])
                 failed_list.append({"Name": stack['Name'], "Failure": failure})
                 remove_stack_list = True
@@ -262,7 +259,7 @@ def wait_all_stacks(stack_list):
                 try:
                     stack_list.remove(stack)
                 except ValueError:
-                    logger.warning(f"Stack {stack} not in list:{stack_list}")
+                    LOGGER.warning(f"Stack {stack} not in list:{stack_list}")
 
         timeout += 1
         time.sleep(10)
@@ -296,9 +293,9 @@ def get_stack_output_parameters(stack_name, session=None):
         session (object, optional): boto3 session object
 
     Returns:
-        dict: Returns a dict with all of the OutputKeys and Values
+        dict: Returns a dict with all the OutputKeys and Values
     """
-    output_values = dict()
+    output_values = {}
     response = describe_stack(stack_name=stack_name, session=session)
     if response['Stacks'][0].get('Outputs'):
         for x in response['Stacks'][0]['Outputs']:
@@ -329,13 +326,13 @@ def determine_stack_failure_event(stack_name, session=None):
     ]
 
     response = describe_stack_events(stack_name=stack_name, session=session)
-    # logger.info(f"StackEvents:{response['StackEvents']}")
+    # LOGGER.info(f"StackEvents:{response['StackEvents']}")
     for x in response['StackEvents']:
         if x['ResourceStatus'] in cfn_failure_list:
-            # logger.info(f"Found stack ResourceStatus in failure list")
+            # LOGGER.info(f"Found stack ResourceStatus in failure list")
             if x.get('ResourceStatusReason'):
                 err_msg = f"{x['LogicalResourceId']} - {x['ResourceStatusReason']}"
-                logger.info(
+                LOGGER.info(
                     f"Stack:{stack_name} - Error:{x['ResourceStatusReason']} LogicalResourceId:{x['LogicalResourceId']}"
                 )
 
@@ -360,9 +357,9 @@ def wait_for_stack_complete(stack_name, stack_url, cfn_action, session=None):
         waiter.wait(StackName=stack_name)
 
     except ex.WaiterError as e:
-        logger.error(f"WaiterError: {e}")
+        LOGGER.error(f"WaiterError: {e}")
         response = determine_stack_failure_event(stack_name=stack_name, session=session)
-        raise Exception(f"Stack Failure: {stack_url} [ERROR] {response}")
+        raise Exception(f'Stack Failure: {stack_url} [ERROR] {response}') from e
 
 
 def wait_for_stack_delete_complete(stack_name, session=None):
@@ -381,9 +378,9 @@ def wait_for_stack_delete_complete(stack_name, session=None):
         waiter.wait(StackName=stack_name)
 
     except ex.WaiterError as e:
-        logger.error(f"WaiterError in wait_for_stack_delete_complete: {e}")
+        LOGGER.error(f"WaiterError in wait_for_stack_delete_complete: {e}")
         response = determine_stack_failure_event(stack_name=stack_name, session=session)
-        raise Exception(f"Stack Failure: {stack_name} [ERROR] {response}")
+        raise Exception(f'Stack Failure: {stack_name} [ERROR] {response}') from e
 
 
 def describe_stack(stack_name, session=None):
@@ -400,13 +397,13 @@ def describe_stack(stack_name, session=None):
     """
     client = boto3_client(service='cloudformation', session=session)
     try:
-        logger.info(f"Getting details about CloudFormation Stack:{stack_name}")
+        LOGGER.info(f"Getting details about CloudFormation Stack:{stack_name}")
         response = client.describe_stacks(StackName=stack_name)
         return response
 
     except ex.ClientError as e:
         if str(e).endswith(" does not exist"):
-            logger.warning(f"Stack, {stack_name} does not exist...")
+            LOGGER.warning(f"Stack, {stack_name} does not exist...")
             # return False
 
         else:
@@ -415,7 +412,7 @@ def describe_stack(stack_name, session=None):
             )
 
     except Exception as e:
-        logger.warning(f"describe_stack error:{str(e)}")
+        LOGGER.warning(f"describe_stack error:{str(e)}")
 
 
 def describe_stack_events(stack_name, session=None):
@@ -437,9 +434,7 @@ def describe_stack_events(stack_name, session=None):
 
     except ex.ClientError as e:
         if str(e).endswith(" does not exist"):
-            raise ex.NotFoundException(
-                f"Could not find stack with name {stack_name}"
-            )
+            raise Exception(f'Could not find stack with name {stack_name}') from e
 
         else:
             raise ex.ClientError(
@@ -459,7 +454,7 @@ def validate_template(template, session=None):
     Returns:
         dict: Standard AWS dictionary with validation results, raises exception if template is invalid
     """
-    logger.info("Validating CloudFormation Template")
+    LOGGER.info("Validating CloudFormation Template")
     client = boto3_client(service='cloudformation', session=session)
     try:
         response = client.validate_template(TemplateBody=template)
@@ -489,8 +484,8 @@ def create_stack(**kwargs):
     Returns:
         dict: Standard AWS dictionary with create_stack results
     """
-    logger.info(f"Arguments:{kwargs}")
-    logger.info(f"Creating Stack:{kwargs['StackName']}")
+    LOGGER.info(f"Arguments:{kwargs}")
+    LOGGER.info(f"Creating Stack:{kwargs['StackName']}")
     client = boto3_client(service='cloudformation', session=kwargs['session'])
     del kwargs['session']
     response = client.create_stack(**kwargs)
@@ -535,17 +530,17 @@ def update_stack(**kwargs):
     Returns:
         dict: Standard AWS dictionary with stack update results
     """
-    logger.info(f"Arguments:{kwargs}")
-    logger.info(f"Updating Stack:{kwargs['StackName']}")
+    LOGGER.info(f"Arguments:{kwargs}")
+    LOGGER.info(f"Updating Stack:{kwargs['StackName']}")
     client = boto3_client(service='cloudformation', session=kwargs['session'])
     del kwargs['session']
     try:
         response = client.update_stack(**kwargs)
 
     except Exception as e:
-        logger.warning(e)
+        LOGGER.warning(e)
         if re.search(r'(No updates are to be performed)', str(e)):
-            logger.warning("No updates need to be performed...")
+            LOGGER.warning("No updates need to be performed...")
             response = False
         else:
             raise e
@@ -570,10 +565,10 @@ def get_stack_waiter(event, session=None):
     try:
         waiter = client.get_waiter(event)
 
-    except BaseException as e:
-        raise ex.StackWaiterException(
+    except Exception as e:
+        raise Exception(
             f"Failed to retrieve stack waiter for event {event}: {str(e)}"
-        )
+        ) from e
 
     return waiter
 
@@ -617,9 +612,9 @@ def list_stacks(session=None):
                 stacks.append(x['StackName'])
 
     except Exception as e:
-        raise ex.CloudFormationException(
+        raise Exception(
             f"Failed to get list of cloudformation templates: {str(e)}"
-        )
+        ) from e
 
     return stacks
 
@@ -634,18 +629,18 @@ def enable_termination_protection(stack_name, session=None):
     Returns:
         none
     """
-    logger.info(f"Setting Termination Protection on {stack_name}")
+    LOGGER.info(f"Setting Termination Protection on {stack_name}")
     try:
         client = boto3_client(service='cloudformation', session=session)
         response = client.update_termination_protection(
             EnableTerminationProtection=True,
             StackName=stack_name
         )
-        logger.debug(response)
+        LOGGER.debug(response)
 
     except Exception as e:
-        logger.error(str(e))
-        raise Exception
+        LOGGER.error(str(e))
+        raise Exception from e
 
 
 def disable_termination_protection(stack_name, session=None):
@@ -662,19 +657,19 @@ def disable_termination_protection(stack_name, session=None):
         client = boto3_client(service='cloudformation', session=session)
         stack_exists = describe_stack(stack_name=stack_name, session=session)
         if stack_exists:
-            logger.info("Checking time difference between Stack Creation and now. (disable if < 20 min)")
+            LOGGER.info("Checking time difference between Stack Creation and now. (disable if < 20 min)")
             diff = datetime.now(timezone.utc) - stack_exists['Stacks'][0]['CreationTime']
             if stack_exists and (divmod(diff.days * 86400 + diff.seconds, 60)[0] < 20):
-                logger.info(f"Disabling Termination Protection on {stack_name}")
+                LOGGER.info(f"Disabling Termination Protection on {stack_name}")
                 response = client.update_termination_protection(
                     EnableTerminationProtection=False,
                     StackName=stack_name
                 )
-                logger.debug(response)
+                LOGGER.debug(response)
 
             else:
-                logger.warning('Time difference is greater than 20 min')
+                LOGGER.warning('Time difference is greater than 20 min')
 
     except Exception as e:
-        logger.error(str(e))
-        raise Exception
+        LOGGER.error(str(e))
+        raise Exception from e

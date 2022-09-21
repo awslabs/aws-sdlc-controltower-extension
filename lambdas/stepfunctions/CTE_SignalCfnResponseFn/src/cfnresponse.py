@@ -2,25 +2,31 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from __future__ import print_function
+import logging
 import os
 import json
 import urllib3
+
+LOG_LEVEL = os.getenv('LOG_LEVEL', 'INFO')
+LOGGER = logging.getLogger()
+LOGGER.setLevel(getattr(logging, LOG_LEVEL.upper(), logging.INFO))
+logging.getLogger("botocore").setLevel(logging.ERROR)
 
 SUCCESS = "SUCCESS"
 FAILED = "FAILED"
 
 http = urllib3.PoolManager()
-function_name = os.environ['AWS_LAMBDA_FUNCTION_NAME']
+FUNCTION_NAME = os.environ['AWS_LAMBDA_FUNCTION_NAME']
 
 
-def send(event, context, responseStatus, responseData, physicalResourceId=function_name, noEcho=False, reason=None):
+def send(event, context, responseStatus, responseData, physicalResourceId=FUNCTION_NAME, noEcho=False, reason=None):
     errors = [v for k, v in responseData.items() if 'ERROR' in k]
     if errors:
         reason = f'[CloudWatch Log Stream: {context.log_stream_name}] {errors}'
 
     responseUrl = event['ResponseURL']
 
-    print(responseUrl)
+    LOGGER.info(responseUrl)
 
     responseBody = {
         'Status': responseStatus,
@@ -35,19 +41,17 @@ def send(event, context, responseStatus, responseData, physicalResourceId=functi
 
     json_responseBody = json.dumps(responseBody)
 
-    print("Response body:")
-    print(json_responseBody)
+    LOGGER.info("Response body:")
+    LOGGER.info(json_responseBody)
 
     headers = {
-        'content-type' : '',
-        'content-length' : str(len(json_responseBody))
+        'content-type': '',
+        'content-length': str(len(json_responseBody))
     }
 
     try:
         response = http.request('PUT', responseUrl, headers=headers, body=json_responseBody)
-        print("Status code:", response.status)
-
+        LOGGER.info(f"Status code: {response.status}")
 
     except Exception as e:
-
-        print("send(..) failed executing http.request(..):", e)
+        LOGGER.error("send(..) failed executing http.request(..):", e)
