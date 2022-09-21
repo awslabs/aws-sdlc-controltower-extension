@@ -16,7 +16,7 @@ SUCCESS = "SUCCESS"
 FAILED = "FAILED"
 
 http = urllib3.PoolManager()
-FUNCTION_NAME = os.environ['AWS_LAMBDA_FUNCTION_NAME']
+FUNCTION_NAME = os.getenv('AWS_LAMBDA_FUNCTION_NAME', "LAMBDA_FUNCTION")
 
 
 def send(event, context, responseStatus, responseData, physicalResourceId=FUNCTION_NAME, noEcho=False, reason=None):

@@ -11,7 +11,7 @@ echo -n "" > "${OUTPUT_FILE}"
 echo "#---------------------------------------------------#" | tee -a "${OUTPUT_FILE}"
 echo "#               Linting Python Files                 " | tee -a "${OUTPUT_FILE}"
 echo "#---------------------------------------------------#" | tee -a "${OUTPUT_FILE}"
-find "lambdas" -name "*.py" | \
+find "lambda" -name "*.py" | \
   grep -Ev ".venv|.pytest_cach|.tox|botocore|boto3|.aws" | \
   xargs pylint --rcfile .pylintrc | tee -a "${OUTPUT_FILE}"
 

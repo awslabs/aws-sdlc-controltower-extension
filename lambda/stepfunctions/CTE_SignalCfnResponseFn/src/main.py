@@ -4,6 +4,7 @@
 import os
 import json
 import logging
+import ast
 import cfnresponse
 
 LOG_LEVEL = os.getenv('LOG_LEVEL', 'INFO')
@@ -24,17 +25,31 @@ def lambda_handler(event, context):
         N/A
     """
     print(json.dumps(event))
-    account = event["Payload"]['Account']
+    response_body = ""
 
-    if event["Payload"]['Account'].get("Outputs"):
-        response_body = event["Payload"]['Account'].get("Outputs")
-    elif event["Payload"]['Account'].get("ERROR"):
-        response_body = event["Payload"]['Account']
+    if event.get("Error"):
+        error_data = json.loads(event['Cause'])['errorMessage']
+        json_data = ast.literal_eval(error_data)
+        response_event = json_data.get('event')
+        response_body = {"ERROR": json_data['error']}
+        account = {"Status": json_data['status']}
+
+        LOGGER.info(f"response_event:{response_event}")
+        LOGGER.info(f"response_body:{response_body}")
+
     else:
-        response_body = ""
+        account = event["Payload"]['Account']
+        response_event = event["Payload"]['CustomResourceEvent']
+        LOGGER.info(f"response_body:{response_body}")
 
-    response_event = event["Payload"]['CustomResourceEvent']
-    print(f"response_body:{response_body}")
+        if event["Payload"]['Account'].get("Outputs"):
+            response_body = event["Payload"]['Account'].get("Outputs")
+        elif event["Payload"]['Account'].get("ERROR"):
+            response_body = event["Payload"]['Account']
+        else:
+            response_body = {}
+
+        LOGGER.info(f"response_body:{response_body}")
 
     if account["Status"] == 'SUCCESS':
         cfn_res = cfnresponse.SUCCESS

@@ -7,7 +7,6 @@ import os
 import time
 import random
 import boto3
-import cfnresponse
 from helper import search_provisioned_products, build_service_catalog_parameters, create_update_provision_product, \
     get_provisioning_artifact_id, get_ou_id
 
@@ -75,13 +74,14 @@ def lambda_handler(event, context):
                 product_name=product_name,
                 client=SC_CLIENT
             )
+
             pp_info = create_update_provision_product(
                 product_name=product_name,
                 pp_name=resource_prop['ServiceCatalogParameters']['AccountName'],
                 pa_id=pa_id,
                 client=SC_CLIENT,
                 params=sc_params,
-                update=update_needed
+                update=update_needed,
             )
             del pp_info['RecordDetail']['CreatedTime']
             del pp_info['RecordDetail']['UpdatedTime']
@@ -95,11 +95,10 @@ def lambda_handler(event, context):
 
     # If function fails return a FAILED signal to CFN
     except Exception as e:
+        error_output = {
+            "event": event,
+            "status": "FAILED",
+            "error": str(e)
+        }
         LOGGER.error(e)
-        response_body = {'ERROR': str(e)}
-        cfnresponse.send(
-            event=payload['CustomResourceEvent'],
-            context=context,
-            responseStatus=cfnresponse.FAILED,
-            responseData=response_body
-        )
+        raise TypeError(str(error_output)) from e

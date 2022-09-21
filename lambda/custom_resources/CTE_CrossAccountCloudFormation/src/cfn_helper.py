@@ -436,10 +436,9 @@ def describe_stack_events(stack_name, session=None):
         if str(e).endswith(" does not exist"):
             raise Exception(f'Could not find stack with name {stack_name}') from e
 
-        else:
-            raise ex.ClientError(
-                f"Failed to lookup stack events for {stack_name}: {str(e)}"
-            )
+        raise ex.ClientError(
+            f"Failed to lookup stack events for {stack_name}: {str(e)}"
+        )
 
 
 def validate_template(template, session=None):

@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import os
+import re
 import logging
 import boto3
 
@@ -121,7 +122,7 @@ def get_provisioning_artifact_id(product_name: str, client: boto3.client) -> str
             return _product_info['Id']
 
 
-def create_update_provision_product(product_name: str, pp_name: str, pa_id: str, client: boto3.client, params=None,
+def create_update_provision_product(product_name: str, pp_name: str, pa_id: str, client: boto3.client, params: list,
                                     tags=None, update=False) -> dict:
     """Creates a Service Catalog Provisioned Product
 
@@ -137,17 +138,26 @@ def create_update_provision_product(product_name: str, pp_name: str, pa_id: str,
     Returns:
         Return: boto3.client response for service catalog provision product
     """
-    if params is None:
-        params = []
-    if tags is None:
-        tags = []
+    param_tags = params
+
+    # Since there can't be any () within a tag we pull out just the
+    for d in param_tags:
+        d.update((k, re.search('\((.*)\)', v).group(1)) for k, v in d.items() if ("(" and ")") in v)
+        d.update((k, f"SCParameter:{v}") for k, v in d.items() if k == "Key")
+
+    if tags:
+        for x in param_tags:
+            tags.append(x)
+    else:
+        tags = param_tags
 
     LOGGER.debug(f"Parameters used:{params}")
     LOGGER.debug(f"product_name:{product_name}")
     LOGGER.debug(f"pp_name:{pp_name}")
     LOGGER.debug(f"pa_id:{pa_id}")
     LOGGER.debug(f"params:{params}")
-    LOGGER.debug(f"tags:{tags}")
+    LOGGER.info(f"tags:{tags}")
+
     if update:
         LOGGER.info(f"Updating pp_id:{pp_name} with ProvisionArtifactId:{pa_id} in ProductName:{product_name}")
         sc_response = client.update_provisioned_product(
@@ -158,7 +168,7 @@ def create_update_provision_product(product_name: str, pp_name: str, pa_id: str,
             Tags=tags
         )
     else:
-        logging.info(f"Creating pp_id:{pp_name} with ProvisionArtifactId:{pa_id} in ProductName:{product_name}")
+        LOGGER.info(f"Creating pp_id:{pp_name} with ProvisionArtifactId:{pa_id} in ProductName:{product_name}")
         sc_response = client.provision_product(
             ProductName=product_name,
             ProvisionedProductName=pp_name,

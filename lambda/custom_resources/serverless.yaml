@@ -1,0 +1,66 @@
+# Copyright 2021 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: Apache-2.0
+
+Transform: "AWS::Serverless-2016-10-31"
+Description: Custom Resources to Invoke Account Creation and to run a decoupled CloudFormation Stack (SAM)
+
+Resources:
+  # -----------------------------
+  # CTE_InvokeCreateAccountFn
+  # -----------------------------
+  rCTEInvokeCreateAccountFn:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: main.lambda_handler
+      Runtime: python3.7
+      FunctionName: CTE_InvokeCreateAccountFn
+      Description: This function will trigger the Step Function that will provision account via Account Vending Machine.
+      Timeout: 900
+      Layers:
+        - '{{resolve:ssm:/lambda/layer/cfnresponse}}'
+      Policies:
+        - AWSStepFunctionsFullAccess
+      CodeUri: CTE_InvokeCreateAccountFn/src
+
+  rCTEInvokeCreateAccountFnPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !GetAtt rCTEInvokeCreateAccountFn.Arn
+      Action: lambda:InvokeFunction
+      Principal: cloudformation.amazonaws.com
+
+  rCTEInvokeCreateAccountFnLogs:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${rCTEInvokeCreateAccountFn}"
+      RetentionInDays: 7
+
+  # ------------------------------------
+  # CTE_CrossAccountCloudFormationFn
+  # ------------------------------------
+  rCTECrossAccountCloudFormationFn:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: main.lambda_handler
+      Runtime: python3.9
+      FunctionName: CTE_CrossAccountCloudFormation
+      Description: This function will allow you to deploy a CloudFormation Stack across accounts.
+      Timeout: 900
+      CodeUri: CTE_CrossAccountCloudFormation/src
+      Layers:
+        - '{{resolve:ssm:/lambda/layer/cfnresponse}}'
+      Policies:
+        - AdministratorAccess
+
+  rCTECrossAccountCloudFormationFnPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !GetAtt rCTECrossAccountCloudFormationFn.Arn
+      Action: lambda:InvokeFunction
+      Principal: cloudformation.amazonaws.com
+
+  rCTECrossAccountCloudFormationFnLogs:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${rCTECrossAccountCloudFormationFn}"
+      RetentionInDays: 7

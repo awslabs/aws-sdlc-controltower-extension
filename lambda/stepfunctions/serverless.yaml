@@ -7,6 +7,8 @@ Description: Custom Resource
 Parameters:
   pControlTowerPortfolioId:
     Type: String
+  pControlTowerProductId:
+    Type: String
 
 Resources:
   # https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/sam-resource-statemachine.html
@@ -35,6 +37,10 @@ Resources:
             Parameters:
               FunctionName: !Sub arn:${AWS::Partition}:lambda:${AWS::Region}:${AWS::AccountId}:function:CTE_CreateAccountFn
               Payload.$: $
+            Catch:
+              - ErrorEquals:
+                  - TypeError
+                Next: Signal Cfn Response
           Wait 1 Minute (Create Account):
             Type: Wait
             Seconds: 60
@@ -70,6 +76,10 @@ Resources:
             Parameters:
               FunctionName: !Sub arn:${AWS::Partition}:lambda:${AWS::Region}:${AWS::AccountId}:function:CTE_GetAccountStatusFn
               Payload.$: $
+            Catch:
+              - ErrorEquals:
+                  - TypeError
+                Next: Signal Cfn Response
           Account Creation Complete?:
             Type: Choice
             Choices:
@@ -115,35 +125,38 @@ Resources:
       Tracing:
         Enabled: True
 
+  # --------------------------------------
+  # Service Catalog Update Constraint
+  # --------------------------------------
+  rUpdateSCTaggingConstraint:
+    Type: AWS::ServiceCatalog::ResourceUpdateConstraint
+    Properties:
+      PortfolioId: !Ref pControlTowerPortfolioId
+      ProductId: !Ref pControlTowerProductId
+      TagUpdateOnProvisionedProduct: ALLOWED
+
+  # ---------------
+  # Lambda Layers
+  # ---------------
+  rCTECfnResponseHelperLayer:
+    Type: AWS::Serverless::LayerVersion
+    Properties:
+      LayerName: cfnresponse
+      ContentUri: ../layers/CTE_CfnResponse
+      CompatibleRuntimes:
+        - python3.9
+    Metadata:
+      BuildMethod: python3.9
+
+  rCTECfnResponseHelperLayerSsmParameter:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: "/lambda/layer/cfnresponse"
+      Type: String
+      Value: !Ref rCTECfnResponseHelperLayer
+      Description: SSM Parameters for Lambda layer version
+
   # https://aws.amazon.com/premiumsupport/knowledge-center/lambda-sam-template-permissions/
-  # -----------------------------
-  # CTE_InvokeCreateAccountFn
-  # -----------------------------
-  rCTEInvokeCreateAccountFn:
-    Type: AWS::Serverless::Function
-    Properties:
-      Handler: main.lambda_handler
-      Runtime: python3.7
-      FunctionName: CTE_InvokeCreateAccountFn
-      Description: This function will trigger the Step Function that will provision account via Account Vending Machine.
-      Timeout: 900
-      Policies:
-        - AWSStepFunctionsFullAccess
-      CodeUri: CTE_InvokeCreateAccountFn/src
-
-  rCTEInvokeCreateAccountFnPermission:
-    Type: AWS::Lambda::Permission
-    Properties:
-      FunctionName: !GetAtt rCTEInvokeCreateAccountFn.Arn
-      Action: lambda:InvokeFunction
-      Principal: cloudformation.amazonaws.com
-
-  rCTEInvokeCreateAccountFnLogs:
-    Type: AWS::Logs::LogGroup
-    Properties:
-      LogGroupName: !Sub "/aws/lambda/${rCTEInvokeCreateAccountFn}"
-      RetentionInDays: 7
-
   # ----------------------
   # CTE_CreateAccountFn
   # ----------------------
@@ -254,6 +267,8 @@ Resources:
       Description: This function will send a SUCCESS or FAILED response back to the original CloudFormation signal.
       Timeout: 900
       CodeUri: CTE_SignalCfnResponseFn/src
+      Layers:
+        - !Ref rCTECfnResponseHelperLayer
 
   rCTESignalCfnResponseFnLogs:
     Type: AWS::Logs::LogGroup

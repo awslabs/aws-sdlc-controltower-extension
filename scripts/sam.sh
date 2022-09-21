@@ -37,37 +37,34 @@ PORTFOLIO_ID=$(aws servicecatalog list-portfolios \
     --query 'PortfolioDetails[?starts_with(DisplayName, `AWS Control Tower Account Factory Portfolio`)].Id' \
     --output text)
 
+PRODUCT_ID=$(aws servicecatalog describe-product \
+    --name "AWS Control Tower Account Factory" \
+    --query 'ProductViewSummary.ProductId' --output text)
+
 # Stopping script if there's a failure
 set -e
 
 echo "[INFO] Using Bucket:${BUCKET} KMS:${KMS} for SAM Deployment"
 
-echo "[INFO] Building Infrastructure Serverless Application Function (lambdas/stepfunctions/serverless.yaml)"
-sam build -t lambdas/stepfunctions/serverless.yaml --use-container --region "${region}"
+# Build / Deploy StepFunction (Lambdas)
+echo "[INFO] Building Infrastructure Serverless Application Function (lambda/stepfunctions/serverless.yaml)"
+sam build -t lambda/stepfunctions/serverless.yaml --use-container --region "${region}"
 
-echo "[INFO] Deploying Infrastructure Serverless Application Function (lambdas/stepfunctions/serverless.yaml)"
+echo "[INFO] Deploying Infrastructure Serverless Application Function (lambda/stepfunctions/serverless.yaml)"
 sam deploy \
-  --config-file lambdas/stepfunctions/serverless.toml \
+  --config-file lambda/stepfunctions/serverless.toml \
   --s3-bucket "${BUCKET}" \
   --kms-key-id "${KMS}" \
-  --parameter-overrides "pControlTowerPortfolioId=${PORTFOLIO_ID}" \
+  --parameter-overrides "pControlTowerPortfolioId=${PORTFOLIO_ID} pControlTowerProductId=${PRODUCT_ID}"\
   --no-fail-on-empty-changeset
 
-echo "[INFO] Building Infrastructure Serverless Application Function (lambdas/custom_resources/serverless.yaml)"
-sam build -t lambdas/custom_resources/serverless.yaml --use-container --region "${region}"
+# Build / Deploy CustomResource (Lambdas)
+echo "[INFO] Building Infrastructure Serverless Application Function (lambda/custom_resources/serverless.yaml)"
+sam build -t lambda/custom_resources/serverless.yaml --use-container --region "${region}"
 
-echo "[INFO] Deploying Infrastructure Serverless Application Function (lambdas/custom_resources/serverless.yaml)"
+echo "[INFO] Deploying Infrastructure Serverless Application Function (lambda/custom_resources/serverless.yaml)"
 sam deploy \
-  --config-file lambdas/custom_resources/serverless.toml \
+  --config-file lambda/custom_resources/serverless.toml \
   --s3-bucket "${BUCKET}" \
   --kms-key-id "${KMS}" \
   --no-fail-on-empty-changeset
-
-# Updating Service Catalog Portfolio Associated Principal
-#echo "[INFO] Getting Local Role Arn"
-#LOCAL_ROLE_ARN=$(aws sts get-caller-identity --query 'Arn' --output text | sed -e 's/assumed-//g' | sed -e 's/\/botocore-session-[0-9]*//g')
-#echo "[INFO] Adding local used to "
-#aws servicecatalog associate-principal-with-portfolio \
-#  --portfolio-id "${PORTFOLIO_ID}" \
-#  --principal-arn "${LOCAL_ROLE_ARN}" \
-#  --principal-type IAM
