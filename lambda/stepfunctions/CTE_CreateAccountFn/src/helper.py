@@ -3,6 +3,7 @@
 
 import os
 import re
+import copy
 import logging
 import boto3
 
@@ -138,7 +139,7 @@ def create_update_provision_product(product_name: str, pp_name: str, pa_id: str,
     Returns:
         Return: boto3.client response for service catalog provision product
     """
-    param_tags = params
+    param_tags = copy.deepcopy(params)
 
     # Since there can't be any () within a tag we pull out just the
     for d in param_tags:

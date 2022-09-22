@@ -55,7 +55,7 @@ sam deploy \
   --config-file lambda/stepfunctions/serverless.toml \
   --s3-bucket "${BUCKET}" \
   --kms-key-id "${KMS}" \
-  --parameter-overrides "pControlTowerPortfolioId=${PORTFOLIO_ID} pControlTowerProductId=${PRODUCT_ID}"\
+  --parameter-overrides "pControlTowerPortfolioId=${PORTFOLIO_ID} pControlTowerProductId=${PRODUCT_ID}" \
   --no-fail-on-empty-changeset
 
 # Build / Deploy CustomResource (Lambdas)
