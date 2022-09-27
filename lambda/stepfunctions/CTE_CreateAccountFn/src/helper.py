@@ -141,9 +141,9 @@ def create_update_provision_product(product_name: str, pp_name: str, pa_id: str,
     """
     param_tags = copy.deepcopy(params)
 
-    # Since there can't be any () within a tag we pull out just the
+    # Since there can't be any () within a tag, so we remove them and add a : between the OU name and OU id
     for d in param_tags:
-        d.update((k, re.search('\((.*)\)', v).group(1)) for k, v in d.items() if ("(" and ")") in v)
+        d.update((k, v.replace(' ', ':').replace('(', '').replace(')', '')) for k, v in d.items() if ("(" and ")") in v)
         d.update((k, f"SCParameter:{v}") for k, v in d.items() if k == "Key")
 
     if tags:
