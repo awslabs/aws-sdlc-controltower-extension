@@ -17,7 +17,8 @@ Resources:
       Description: This function will trigger the Step Function that will provision account via Account Vending Machine.
       Timeout: 900
       Layers:
-        - '{{resolve:ssm:/lambda/layer/cfnresponse}}'
+        - '{{resolve:ssm:/lambda/layer/cte-cfnresponse}}'
+        - '{{resolve:ssm:/lambda/layer/cte-common}}'
       Policies:
         - AWSStepFunctionsFullAccess
       CodeUri: CTE_InvokeCreateAccountFn/src
@@ -48,7 +49,8 @@ Resources:
       Timeout: 900
       CodeUri: CTE_CrossAccountCloudFormation/src
       Layers:
-        - '{{resolve:ssm:/lambda/layer/cfnresponse}}'
+        - '{{resolve:ssm:/lambda/layer/cte-cfnresponse}}'
+        - '{{resolve:ssm:/lambda/layer/cte-common}}'
       Policies:
         - AdministratorAccess
 

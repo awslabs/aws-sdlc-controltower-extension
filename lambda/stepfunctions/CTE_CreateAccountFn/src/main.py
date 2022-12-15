@@ -9,12 +9,9 @@ import random
 import boto3
 from helper import search_provisioned_products, build_service_catalog_parameters, create_update_provision_product, \
     get_provisioning_artifact_id, get_ou_id
+from custom_logger import CustomLogger
 
-LOG_LEVEL = os.getenv('LOG_LEVEL', 'INFO')
-LOGGER = logging.getLogger()
-LOGGER.setLevel(getattr(logging, LOG_LEVEL.upper(), logging.INFO))
-logging.getLogger("botocore").setLevel(logging.ERROR)
-
+LOGGER = CustomLogger().logger
 SC_CLIENT = boto3.client('servicecatalog')
 
 

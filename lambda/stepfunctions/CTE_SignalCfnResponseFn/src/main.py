@@ -1,16 +1,12 @@
 # Copyright 2021 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0
 
-import os
 import json
-import logging
 import ast
 import cfnresponse
+from custom_logger import CustomLogger
 
-LOG_LEVEL = os.getenv('LOG_LEVEL', 'INFO')
-LOGGER = logging.getLogger()
-LOGGER.setLevel(getattr(logging, LOG_LEVEL.upper(), logging.INFO))
-logging.getLogger("botocore").setLevel(logging.ERROR)
+LOGGER = CustomLogger().logger
 
 
 def lambda_handler(event, context):

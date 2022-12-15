@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 Transform: 'AWS::Serverless-2016-10-31'
-Description: Custom Resource
+Description: Control Tower Extension for Account Creation
 
 Parameters:
   pControlTowerPortfolioId:
@@ -141,7 +141,7 @@ Resources:
   rCTECfnResponseHelperLayer:
     Type: AWS::Serverless::LayerVersion
     Properties:
-      LayerName: cfnresponse
+      LayerName: cte-cfnresponse
       ContentUri: ../layers/CTE_CfnResponse
       CompatibleRuntimes:
         - python3.9
@@ -151,9 +151,27 @@ Resources:
   rCTECfnResponseHelperLayerSsmParameter:
     Type: AWS::SSM::Parameter
     Properties:
-      Name: "/lambda/layer/cfnresponse"
+      Name: "/lambda/layer/cte-cfnresponse"
       Type: String
       Value: !Ref rCTECfnResponseHelperLayer
+      Description: SSM Parameters for Lambda layer version
+
+  rCTECommonHelperLayer:
+    Type: AWS::Serverless::LayerVersion
+    Properties:
+      LayerName: cte-common
+      ContentUri: ../layers/CTE_Common
+      CompatibleRuntimes:
+        - python3.9
+    Metadata:
+      BuildMethod: python3.9
+
+  rCTECommonHelperLayerSsmParameter:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: "/lambda/layer/cte-common"
+      Type: String
+      Value: !Ref rCTECommonHelperLayer
       Description: SSM Parameters for Lambda layer version
 
   # https://aws.amazon.com/premiumsupport/knowledge-center/lambda-sam-template-permissions/
@@ -164,11 +182,13 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       Handler: main.lambda_handler
-      Runtime: python3.7
+      Runtime: python3.9
       FunctionName: CTE_CreateAccountFn
       Description: This function will create an AWS Service Catalog Provisioned Product for Account Vending Machine which creates an account within Control Tower.
       Timeout: 900
       CodeUri: CTE_CreateAccountFn/src
+      Layers:
+        - !Ref rCTECommonHelperLayer
       Environment:
         Variables:
           # This variable is used to identify the AWS Service Catalog Product name to use for account creation
@@ -226,11 +246,13 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       Handler: main.lambda_handler
-      Runtime: python3.7
+      Runtime: python3.9
       FunctionName: CTE_GetAccountStatusFn
       Description: This function will check the account creation status.
       Timeout: 900
       CodeUri: CTE_GetAccountStatusFn/src
+      Layers:
+        - !Ref rCTECommonHelperLayer
       Policies:
         - Statement:
           - Effect: Allow
@@ -262,13 +284,14 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       Handler: main.lambda_handler
-      Runtime: python3.7
+      Runtime: python3.9
       FunctionName: CTE_SignalCfnResponseFn
       Description: This function will send a SUCCESS or FAILED response back to the original CloudFormation signal.
       Timeout: 900
       CodeUri: CTE_SignalCfnResponseFn/src
       Layers:
         - !Ref rCTECfnResponseHelperLayer
+        - !Ref rCTECommonHelperLayer
 
   rCTESignalCfnResponseFnLogs:
     Type: AWS::Logs::LogGroup

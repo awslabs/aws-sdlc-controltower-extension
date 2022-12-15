@@ -443,6 +443,16 @@ Outputs:
 **Error:**
 
 ```bash
+"InvalidParametersException The parent organizational unit ‘SampleOU_Depl (ou-0000-11111111)’ is not enrolled in AWS Control Tower."
+```
+
+**Solution:**
+
+...
+
+**Error:**
+
+```bash
 An error occurred (ResourceNotFoundException) when calling the DescribeProduct operation: Product with name AWS Control 
 Tower Account Factory does not exist or access was denied.
 ```
@@ -452,19 +462,6 @@ Tower Account Factory does not exist or access was denied.
 This means that the CTE-SDLC-StepFunctions-rCTECreateAccountFnRole-* and 
 CTE-SDLC-StepFunctions-rCTEGetAccountStatusFnRole-* Roles haven't been added to the AWS Service Catalog Portfolio 
 (AWS Control Tower Account Factory Portfolio).
-
-**Error:**
-
-```bash
-Failed to create ‘SampleOU_Depl’: AWS Control Tower cannot register organizational unit ou-xxxx-xxxxxxxx because 
-another operation is in progress. Try again later.
-```
-
-**Solution:**
-
-Wait a couple minutes between creating Organizational Units.  
-
-Custom Resource failed to stabilize in expected time. If you are using the Python cfn-response module, you may need to update your Lambda function code so that CloudFormation can attach the updated version.
 
 ### Control Tower Troubleshooting
 https://docs.aws.amazon.com/controltower/latest/userguide/troubleshooting.html

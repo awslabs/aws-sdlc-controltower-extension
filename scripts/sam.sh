@@ -41,6 +41,11 @@ PRODUCT_ID=$(aws servicecatalog describe-product \
     --name "AWS Control Tower Account Factory" \
     --query 'ProductViewSummary.ProductId' --output text)
 
+if [ -z "${PORTFOLIO_ID}" ] || [ -z "${PRODUCT_ID}" ]; then
+  echo "[ERROR] Service Catalog Portfolio Id or Product Id was not found, existing  ..."
+  exit 1
+fi
+
 # Stopping script if there's a failure
 set -e
 
