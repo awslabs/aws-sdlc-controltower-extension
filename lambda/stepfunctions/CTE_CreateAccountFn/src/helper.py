@@ -1,6 +1,7 @@
 # Copyright 2021 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0
 
+import time
 import copy
 import boto3
 from custom_logger import CustomLogger
@@ -8,17 +9,20 @@ from custom_logger import CustomLogger
 LOGGER = CustomLogger().logger
 
 
-def scan_provisioned_products(search_pp_name, client: boto3.client) -> dict:
+def scan_provisioned_products(search_pp_name, client: boto3.client, acc_fac_limit=5) -> dict:
     """Search for existing Service Catalog Provisioned Products
 
     Args:
         search_pp_name (str): Service Catalog Provisioned Product Name to search for
         client (boto3.client): Boto3 Client for Service Catalog
+        acc_fac_limit (int):
 
     Returns:
         str: Service Catalog Provisioned
     """
-    LOGGER.info('Making sure Control Tower is not already executing')
+    action_count = 0
+    action_list = []
+    LOGGER.info(f"Making sure ControlTower has not surpassed the number of concurrent actions (Limit:{acc_fac_limit}).")
     paginator = client.get_paginator("scan_provisioned_products")
     for page in paginator.paginate(
             AccessLevelFilter={
@@ -28,18 +32,14 @@ def scan_provisioned_products(search_pp_name, client: boto3.client) -> dict:
     ):
         for x in page['ProvisionedProducts']:
             if x['Type'] == 'CONTROL_TOWER_ACCOUNT':
-                # Since Control Tower has a serial method of deploying account this statement will check to see if
-                #  there's and existing In-Progress deployment and will return provision the product name / status
+                # Control Tower has a soft limit of 5 concurrent actions
                 if x['Status'] == 'UNDER_CHANGE' and x['Name'] != search_pp_name:
-                    LOGGER.info(f"Found In-Progress Control Tower Deployment ({x['Name']})")
-                    return {"ProvisionedProductName": x['Name'], "Status": x['Status']}
+                    action_count = (action_count + 1)
+                    action_list.append(x['Name'])
 
-                # If existing provision product found return
-                if x['Name'] == search_pp_name:
-                    LOGGER.info(f"Found {x}")
-                    # Removing Create time since it doesn't serializable JSON well
-                    del x['CreatedTime']
-                    return x
+    if action_count >= acc_fac_limit:
+        LOGGER.info(f"Found more than {acc_fac_limit} In-Progress Control Tower Deployments)")
+        return action_list
 
 
 def search_provisioned_products(search_pp_name, client: boto3.client) -> dict:
@@ -72,11 +72,7 @@ def search_provisioned_products(search_pp_name, client: boto3.client) -> dict:
         del provisioned_product['CreatedTime']
         return provisioned_product
 
-    # If the product has not been provisioned yet, since Control Tower has a serial method of deploying
-    # account this statement will check to see if there's and existing In-Progress deployment and will
-    # return provision the product name / status
     LOGGER.info(f"Did not find {search_pp_name}. Searching for any In-Progress Control Tower Deployments")
-    return scan_provisioned_products(search_pp_name, client)
 
 
 def build_service_catalog_parameters(parameters: dict) -> list:
@@ -147,13 +143,6 @@ def create_update_provision_product(product_name: str, pp_name: str, pa_id: str,
     else:
         tags = param_tags
 
-    LOGGER.debug(f"Parameters used:{params}")
-    LOGGER.debug(f"product_name:{product_name}")
-    LOGGER.debug(f"pp_name:{pp_name}")
-    LOGGER.debug(f"pa_id:{pa_id}")
-    LOGGER.debug(f"params:{params}")
-    LOGGER.info(f"tags:{tags}")
-
     if update:
         LOGGER.info(f"Updating pp_id:{pp_name} with ProvisionArtifactId:{pa_id} in ProductName:{product_name}")
         sc_response = client.update_provisioned_product(
@@ -172,6 +161,7 @@ def create_update_provision_product(product_name: str, pp_name: str, pa_id: str,
             ProvisioningParameters=params,
             Tags=tags
         )
+
     LOGGER.debug(sc_response)
     return sc_response
 
@@ -217,3 +207,36 @@ def get_ou_id(ou_path: str):
         count = (count + 1)
 
     return ou_info[ou_path_split[count]]
+
+
+def tags_to_dict(tags):
+    """ Helper for converting the tag structure Boto3 returns into a python dict
+
+    Args:
+        tags (list of dict): Tag structure returned from an AWS call
+
+    Returns:
+        dict: of tags
+    """
+    output = {}
+    if tags:
+        LOGGER.debug(f"Found tags: {tags}")
+        for tag in tags:
+            output[tag['Key']] = tag['Value']
+
+    return output
+
+
+def get_service_catalog_tags(prov_product_info: dict):
+    all_sc_pp_tags = tags_to_dict(tags=prov_product_info.get('Tags'))
+
+    req_sc_pp_tags = {}
+    for k, v in all_sc_pp_tags.items():
+        if ("SCParameter:" in k) and (":ou-" in v):
+            val = v.split(':')
+            req_sc_pp_tags.update({k.replace('SCParameter:', ''): f"{val[0]} ({val[1]})"})
+
+        elif "SCParameter:" in k:
+            req_sc_pp_tags.update({k.replace('SCParameter:', ''): v})
+
+    return req_sc_pp_tags

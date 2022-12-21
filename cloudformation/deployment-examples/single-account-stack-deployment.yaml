@@ -11,7 +11,7 @@ Metadata:
       - Label:
           default: "SDLC Account Information"
         Parameters:
-          - pAccountNamePrefix
+          - pAccountName
           - pSSOUserFirstName
           - pSSOUserLastName
           - pSSOUserEmail
@@ -19,7 +19,7 @@ Metadata:
           - pOrganizationalUnit
 
     ParameterLabels:
-      pAccountNamePrefix:
+      pAccountName:
         default: "Account Name Prefix"
       pSSOUserFirstName:
         default: "SSO Users First Name"
@@ -33,26 +33,20 @@ Metadata:
         default: "Deployment Account Organizational Unit"
 
 Parameters:
-  pAccountNamePrefix:
+  pAccountName:
     Type: String
-    Default: 'ent-ct-team-01'
   pSSOUserFirstName:
     Type: String
-    Default: Justin
   pSSOUserLastName:
     Type: String
-    Default: Kuskowski
   pSSOUserEmail:
     Type: String
-    Default: kuskowsk@amazon.com
   # Account Root Email Addresses
   pAccountEmail:
     Type: String
-    Default: kuskowsk+entctteam01@amazon.com
   # Account Organizational Unit
   pOrganizationalUnit:
     Type: String
-    Default: "Workload:Dev"
 
 Resources:
   rCreateDeplAccount:
@@ -61,7 +55,7 @@ Resources:
       ServiceToken: !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:CTE_InvokeCreateAccountFn
       CreateAccountSfn: !Sub arn:aws:states:${AWS::Region}:${AWS::AccountId}:stateMachine:CTE_SDLC_Integration
       ServiceCatalogParameters:
-        AccountName: !Sub ${pAccountNamePrefix}
+        AccountName: !Sub ${pAccountName}
         AccountEmail: !Ref pAccountEmail
         SSOUserFirstName: !Ref pSSOUserFirstName
         SSOUserLastName: !Ref pSSOUserLastName

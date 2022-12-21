@@ -7,7 +7,7 @@ import logging
 import os
 
 
-class CustomLogger (object):
+class CustomLogger ():
     def __init__(self, event=None):
         log_level = os.getenv('LOG_LEVEL', 'INFO')
         self._logger = logging.getLogger()

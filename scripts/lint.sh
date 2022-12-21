@@ -3,8 +3,9 @@
 # Copyright 2021 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0
 
+LOGS_DIR="logs"
+[ ! -d "${LOGS_DIR}" ] && mkdir "${LOGS_DIR}"
 OUTPUT_FILE="logs/lint-output.txt"
-mkdir "logs"
 echo "Output File: "${OUTPUT_FILE}""
 echo -n "" > "${OUTPUT_FILE}"
 

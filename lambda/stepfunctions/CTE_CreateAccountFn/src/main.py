@@ -4,15 +4,17 @@
 import json
 import logging
 import os
-import time
-import random
 import boto3
 from helper import search_provisioned_products, build_service_catalog_parameters, create_update_provision_product, \
-    get_provisioning_artifact_id, get_ou_id
+    get_provisioning_artifact_id, get_ou_id, scan_provisioned_products
 from custom_logger import CustomLogger
 
 LOGGER = CustomLogger().logger
 SC_CLIENT = boto3.client('servicecatalog')
+
+
+class OuNotFoundException(Exception):
+    pass
 
 
 def lambda_handler(event, context):
@@ -47,25 +49,35 @@ def lambda_handler(event, context):
             current = json.dumps(event['OldResourceProperties']['ServiceCatalogParameters'])
             update_needed = (new != current)
 
-        # Since cfn calls could occur in parallel adding a random sleep to help reduce multiple executions
-        sleep_time = random.randrange(60)
-        LOGGER.info(f"Sleeping for {sleep_time} to help reduce duplicate executions")
-        time.sleep(sleep_time)
+        sc_parameters = resource_prop['ServiceCatalogParameters']
+
+        # Update Account Information
+        try:
+            if "(" not in sc_parameters['ManagedOrganizationalUnit']:
+                ou_name = sc_parameters['ManagedOrganizationalUnit'].split(":")[-1]
+                ou_id = get_ou_id(ou_path=sc_parameters['ManagedOrganizationalUnit'])
+                sc_parameters['ManagedOrganizationalUnit'] = f"{ou_name} ({ou_id})"
+        except KeyError as key_error:
+            raise OuNotFoundException(
+                f'The organizational unit was not found. OU Name: {ou_name}') from key_error
+
+        # Determine if there's already a Provisioned Product In-Progress
+        pp_in_progress = scan_provisioned_products(
+            search_pp_name=sc_parameters['AccountName'],
+            client=SC_CLIENT
+        )
 
         provisioned_product = search_provisioned_products(
-            search_pp_name=resource_prop['ServiceCatalogParameters']['AccountName'],
+            search_pp_name=sc_parameters['AccountName'],
             client=SC_CLIENT
         )
 
         # If not found, execute new SC Product Artifact deployment
-        if not provisioned_product or update_needed:
+        if (not pp_in_progress and not provisioned_product) or update_needed:
             product_name = os.getenv('SC_CT_PRODUCT_NAME')
-            ou_name = resource_prop['ServiceCatalogParameters']['ManagedOrganizationalUnit'].split(":")[-1]
-            ou_id = get_ou_id(ou_path=resource_prop['ServiceCatalogParameters']['ManagedOrganizationalUnit'])
-            resource_prop['ServiceCatalogParameters']['ManagedOrganizationalUnit'] = f"{ou_name} ({ou_id})"
 
             sc_params = build_service_catalog_parameters(
-                parameters=resource_prop['ServiceCatalogParameters']
+                parameters=sc_parameters
             )
             pa_id = get_provisioning_artifact_id(
                 product_name=product_name,
@@ -74,12 +86,13 @@ def lambda_handler(event, context):
 
             pp_info = create_update_provision_product(
                 product_name=product_name,
-                pp_name=resource_prop['ServiceCatalogParameters']['AccountName'],
+                pp_name=sc_parameters['AccountName'],
                 pa_id=pa_id,
                 client=SC_CLIENT,
                 params=sc_params,
                 update=update_needed,
             )
+
             del pp_info['RecordDetail']['CreatedTime']
             del pp_info['RecordDetail']['UpdatedTime']
             payload['ServiceCatalogEvent'] = pp_info['RecordDetail']

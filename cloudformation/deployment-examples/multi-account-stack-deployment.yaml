@@ -47,9 +47,8 @@ Metadata:
 Parameters:
   pAccountNamePrefix:
     Type: String
-    Default: 'ent-ct-team'
   pSSOUserFirstName:
-   Type: String
+    Type: String
   pSSOUserLastName:
     Type: String
   pSSOUserEmail:
@@ -85,7 +84,6 @@ Resources:
 
   rCreateProdAccount:
     Type: Custom::InvokeCreateAccountFn
-    DependsOn: rCreateDeplAccount
     Properties:
       ServiceToken: !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:CTE_InvokeCreateAccountFn
       CreateAccountSfn: !Sub arn:aws:states:${AWS::Region}:${AWS::AccountId}:stateMachine:CTE_SDLC_Integration
