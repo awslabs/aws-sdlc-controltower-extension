@@ -212,7 +212,7 @@ For this example S3 Bucket Access Logging is not enabled but is recommended that
   
   ![alt text](images/ct-create-ou-2.png)
   
-  5.) Enter in desired name of Organization Unit (OU) Name. Then select the Parent OU of the new OU. 
+  5.) Enter in desired Organizational Unit (OU) Name. Then select the Parent OU from the drop down. 
   
   ![alt text](images/ct-create-ou-3.png) 
  
