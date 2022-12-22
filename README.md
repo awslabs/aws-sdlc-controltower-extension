@@ -441,19 +441,6 @@ Outputs:
 ```
 
 ## Additional Information
-### Common Errors
-**Error:**
-
-```bash
-An error occurred (ResourceNotFoundException) when calling the DescribeProduct operation: Product with name AWS Control 
-Tower Account Factory does not exist or access was denied.
-```
-
-**Solution:**
-
-This means that the CTE-SDLC-StepFunctions-rCTECreateAccountFnRole-* and 
-CTE-SDLC-StepFunctions-rCTEGetAccountStatusFnRole-* Roles haven't been added to the AWS Service Catalog Portfolio 
-(AWS Control Tower Account Factory Portfolio).
 
 ### Control Tower Troubleshooting
 https://docs.aws.amazon.com/controltower/latest/userguide/troubleshooting.html
