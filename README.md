@@ -208,7 +208,7 @@ For this example S3 Bucket Access Logging is not enabled but is recommended that
   
   ![alt text](images/ct-create-ou-1.png)  
   
-  4.) On the right side click on the "Create resource" drop down. Then select "Create organizational unit".
+  4.) On the right side click on the "Create resources" drop down. Then select "Create organizational unit".
   
   ![alt text](images/ct-create-ou-2.png)
   
