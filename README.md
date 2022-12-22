@@ -30,6 +30,8 @@ search for an existing account creation and will put it in a wait cycle until th
 | lambdas/custom_resources/CTE_InvokeCreateAccountFn      | A Custom Resource that will initiate the Create Account Step Function.                                                                                                                                                                                                              |
 | lambdas/layers                                          | Directory for all Lambda Layers.                                                                                                                                                                                                                                                    |
 | lambdas/layers/CTE_CfnResponse                          | AWS Lambda Layer that will be used to pass back CloudFormation Results.                                                                                                                                                                                                             |
+| lambdas/layers/CTE_Common                               | AWS Lambda Layer that will be used to hold common definitions that could be used across all Lambda Functions.                                                                                                                                                                       |
+| lambdas/stepfunctions                                   | Directory for all Lambda Functions that are used within AWS Step Functions.                                                                                                                                                                                                         |
 | lambdas/stepfunctions/CTE_CreateAccountFn               | AWS Lambda Function that will use AWS Service Catalog / Control Tower to create an AWS Account.                                                                                                                                                                                     |
 | lambdas/stepfunctions/CTE_GetAccountStatusFn            | AWS Lambda Function that will scan the AWS Service Catalog Provisioned Product to see if the account creation has completed.                                                                                                                                                        |
 | lambdas/stepfunctions/CTE_SignalCfnResponseFn           | AWS Lambda Function that will sent a SUCCESSFUL or FAILED response back to the initial Lambda function (CTE_CreateAccountFn) from the Step Function.                                                                                                                                |
@@ -202,19 +204,19 @@ For this example S3 Bucket Access Logging is not enabled but is recommended that
   
   2.) Navigate to Control Tower Console
   
-  3.) On the left side click on "Organizational units"
+  3.) On the left side click on "Organization"
   
   ![alt text](images/ct-create-ou-1.png)  
   
-  4.) On the right side click on "Add an OU"
+  4.) On the right side click on the "Create resource" drop down. Then select "Create organizational unit".
   
   ![alt text](images/ct-create-ou-2.png)
   
-  5.) Enter in desired name of Organization Unit 
+  5.) Enter in desired name of Organization Unit (OU) Name. Then select the Parent OU of the new OU. 
   
   ![alt text](images/ct-create-ou-3.png) 
  
-  Repeat these steps until you create all desired Organizational Units
+  Repeat these steps until you create all desired Organizational Units.
  
   ![alt_text](images/ct-create-ou-4.png)
 
@@ -278,12 +280,12 @@ Resources:
       ServiceToken: !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:CTE_InvokeCreateAccountFn
       CreateAccountSfn: !Sub arn:aws:states:${AWS::Region}:${AWS::AccountId}:stateMachine:CTE_SDLC-Integration
       ServiceCatalogParameters:
-        AccountName: ent-ct-team2-depl
+        AccountName: ent-shrsvc-depl
         AccountEmail: john.doe+1@example.com
         SSOUserFirstName: John
         SSOUserLastName: Doe
         SSOUserEmail: john.doe@example.com
-        ManagedOrganizationalUnit: SampleOU_Depl
+        ManagedOrganizationalUnit: infrastructure:depl
 
   rCreateProdAccount:
     Type: Custom::InvokeCreateAccountFn
@@ -291,12 +293,12 @@ Resources:
       ServiceToken: !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:CTE_InvokeCreateAccountFn
       CreateAccountSfn: !Sub arn:aws:states:${AWS::Region}:${AWS::AccountId}:stateMachine:CTE_SDLC-Integration
       ServiceCatalogParameters:
-        AccountName: ent-ct-team2-prod
+        AccountName: ent-shrsvc-prod
         AccountEmail: john.doe+2@example.com
         SSOUserFirstName: John
         SSOUserLastName: Doe
         SSOUserEmail: john.doe@example.com
-        ManagedOrganizationalUnit: SampleOU:Prod
+        ManagedOrganizationalUnit: infrastructure:prod
 
   rCreateTestAccount:
     Type: Custom::InvokeCreateAccountFn
@@ -304,12 +306,12 @@ Resources:
       ServiceToken: !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:CTE_InvokeCreateAccountFn
       CreateAccountSfn: !Sub arn:aws:states:${AWS::Region}:${AWS::AccountId}:stateMachine:CTE_SDLC-Integration
       ServiceCatalogParameters:
-        AccountName: ent-ct-team2-test
+        AccountName: ent-shrsvc-test
         AccountEmail: john.doe+3@example.com
         SSOUserFirstName: John
         SSOUserLastName: Doe
         SSOUserEmail: john.doe@example.com
-        ManagedOrganizationalUnit: SampleOU:Test
+        ManagedOrganizationalUnit: Infrastructure:dev
 ```
 
 ### CTE_CrossAccountCloudFormation
@@ -443,7 +445,7 @@ Outputs:
 **Error:**
 
 ```bash
-"InvalidParametersException The parent organizational unit ‘SampleOU_Depl (ou-0000-11111111)’ is not enrolled in AWS Control Tower."
+"InvalidParametersException The parent organizational unit ‘Depl (ou-0000-11111111)’ is not enrolled in AWS Control Tower."
 ```
 
 **Solution:**
