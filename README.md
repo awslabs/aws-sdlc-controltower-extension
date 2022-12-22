@@ -311,7 +311,7 @@ Resources:
         SSOUserFirstName: John
         SSOUserLastName: Doe
         SSOUserEmail: john.doe@example.com
-        ManagedOrganizationalUnit: Infrastructure:dev
+        ManagedOrganizationalUnit: infrastructure:dev
 ```
 
 ### CTE_CrossAccountCloudFormation
@@ -442,16 +442,6 @@ Outputs:
 
 ## Additional Information
 ### Common Errors
-**Error:**
-
-```bash
-"InvalidParametersException The parent organizational unit ‘Depl (ou-0000-11111111)’ is not enrolled in AWS Control Tower."
-```
-
-**Solution:**
-
-...
-
 **Error:**
 
 ```bash
