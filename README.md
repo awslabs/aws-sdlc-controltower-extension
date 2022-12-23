@@ -8,13 +8,13 @@ AWS Control Tower is currently serial when creating accounts.  There is addition
 search for an existing account creation and will put it in a wait cycle until the initial account creation has completed. 
 
 ### AWS Resource Diagram for Account Stack creation
-![alt text](images/account-provision-resources.png) 
+![alt text](images/readme/account-provision-resources.png) 
 
 ### Step Function WorkFlow for Account creation
-![alt text](images/stepfunction-diagram.png) 
+![alt text](images/readme/stepfunction-diagram.png) 
 
 ### AWS Resources Diagram for Account Stack integration
-![alt text](images/sdlc-resource-integration.png) 
+![alt text](images/readme/sdlc-resource-integration.png) 
 
 ### Folder Structure
 
@@ -206,19 +206,19 @@ For this example S3 Bucket Access Logging is not enabled but is recommended that
   
   3.) On the left side click on "Organization"
   
-  ![alt text](images/ct-create-ou-1.png)  
+  ![alt text](images/readme/ct-create-ou-1.png)  
   
   4.) On the right side click on the "Create resources" drop down. Then select "Create organizational unit".
   
-  ![alt text](images/ct-create-ou-2.png)
+  ![alt text](images/readme/ct-create-ou-2.png)
   
   5.) Enter in desired Organizational Unit (OU) Name. Then select the Parent OU from the drop down. 
   
-  ![alt text](images/ct-create-ou-3.png) 
+  ![alt text](images/readme/ct-create-ou-3.png) 
  
   Repeat these steps until you create all desired Organizational Units.
  
-  ![alt_text](images/ct-create-ou-4.png)
+  ![alt_text](images/readme/ct-create-ou-4.png)
 
 - Since this solution builds the SAM function inside Lambda-like container, Docker must be installed and running on your workstation.
 
@@ -441,6 +441,8 @@ Outputs:
 ```
 
 ## Additional Information
+
+[Possible Errors](docs/ERRORS.md)
 
 ### Control Tower Troubleshooting
 https://docs.aws.amazon.com/controltower/latest/userguide/troubleshooting.html
