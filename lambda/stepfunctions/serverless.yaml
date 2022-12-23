@@ -1,0 +1,300 @@
+# Copyright 2021 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: Apache-2.0
+
+Transform: 'AWS::Serverless-2016-10-31'
+Description: Control Tower Extension for Account Creation
+
+Parameters:
+  pControlTowerPortfolioId:
+    Type: String
+  pControlTowerProductId:
+    Type: String
+
+Resources:
+  # https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/sam-resource-statemachine.html
+  rCTEAcountCreationStateMachine:
+    Type: AWS::Serverless::StateMachine
+    Properties:
+      Name: CTE_SDLC_Integration
+      Definition:
+        StartAt: Create Account
+        States:
+          Create Account:
+            Next: Account Creation Started?
+            Retry:
+              - ErrorEquals:
+                - Lambda.ServiceException
+                - Lambda.AWSLambdaException
+                - Lambda.SdkClientException
+                IntervalSeconds: 2
+                MaxAttempts: 6
+                BackoffRate: 2
+              - ErrorEquals:
+                - States.ALL
+                MaxAttempts: 3
+            Type: Task
+            Resource: arn:aws:states:::lambda:invoke
+            Parameters:
+              FunctionName: !Sub arn:${AWS::Partition}:lambda:${AWS::Region}:${AWS::AccountId}:function:CTE_CreateAccountFn
+              Payload.$: $
+            Catch:
+              - ErrorEquals:
+                  - TypeError
+                Next: Signal Cfn Response
+          Wait 1 Minute (Create Account):
+            Type: Wait
+            Seconds: 60
+            Next: Create Account
+          Account Creation Started?:
+            Type: Choice
+            Choices:
+              - Or:
+                # Set if it's a new Provisioned Product
+                - Variable: $.Payload.ServiceCatalogEvent.ProvisionedProductId
+                  IsPresent: true
+                # Set if it's an existing Provisioned Product
+                - Variable: $.Payload.ServiceCatalogEvent.Id
+                  IsPresent: true
+                Next: Get Account Status
+            Default: Wait 1 Minute (Create Account)
+          Wait 1 Minute (Wait for Account to Complete):
+            Type: Wait
+            Seconds: 60
+            Next: Get Account Status
+          Get Account Status:
+            Next: Account Creation Complete?
+            Retry:
+              - ErrorEquals:
+                - Lambda.ServiceException
+                - Lambda.AWSLambdaException
+                - Lambda.SdkClientException
+                IntervalSeconds: 2
+                MaxAttempts: 6
+                BackoffRate: 2
+            Type: Task
+            Resource: arn:aws:states:::lambda:invoke
+            Parameters:
+              FunctionName: !Sub arn:${AWS::Partition}:lambda:${AWS::Region}:${AWS::AccountId}:function:CTE_GetAccountStatusFn
+              Payload.$: $
+            Catch:
+              - ErrorEquals:
+                  - TypeError
+                Next: Signal Cfn Response
+          Account Creation Complete?:
+            Type: Choice
+            Choices:
+              - Or:
+                - Variable: $.Payload.Account.Status
+                  StringEquals: FAILED
+                - Variable: $.Payload.Account.Status
+                  StringEquals: SUCCESS
+                Next: Signal Cfn Response
+            Default: Wait 1 Minute (Wait for Account to Complete)
+          Signal Cfn Response:
+            End: true
+            Retry:
+              - ErrorEquals:
+                - Lambda.ServiceException
+                - Lambda.AWSLambdaException
+                - Lambda.SdkClientException
+                IntervalSeconds: 2
+                MaxAttempts: 6
+                BackoffRate: 2
+            Type: Task
+            Resource: arn:aws:states:::lambda:invoke
+            Parameters:
+              FunctionName: !Sub arn:${AWS::Partition}:lambda:${AWS::Region}:${AWS::AccountId}:function:CTE_SignalCfnResponseFn
+              Payload.$: $
+        TimeoutSeconds: 7200
+      Policies:
+        - Statement:
+          - Effect: Allow
+            Action: lambda:InvokeFunction
+            Resource:
+            - !Sub arn:${AWS::Partition}:lambda:${AWS::Region}:${AWS::AccountId}:function:CTE_SignalCfnResponseFn
+            - !Sub arn:${AWS::Partition}:lambda:${AWS::Region}:${AWS::AccountId}:function:CTE_CreateAccountFn
+            - !Sub arn:${AWS::Partition}:lambda:${AWS::Region}:${AWS::AccountId}:function:CTE_GetAccountStatusFn
+          - Effect: Allow
+            Action:
+            - xray:PutTraceSegments
+            - xray:PutTelemetryRecords
+            - xray:GetSamplingRules
+            - xray:GetSamplingTargets
+            Resource:
+            - '*'
+      Tracing:
+        Enabled: True
+
+  # --------------------------------------
+  # Service Catalog Update Constraint
+  # --------------------------------------
+  rUpdateSCTaggingConstraint:
+    Type: AWS::ServiceCatalog::ResourceUpdateConstraint
+    Properties:
+      PortfolioId: !Ref pControlTowerPortfolioId
+      ProductId: !Ref pControlTowerProductId
+      TagUpdateOnProvisionedProduct: ALLOWED
+
+  # ---------------
+  # Lambda Layers
+  # ---------------
+  rCTECfnResponseHelperLayer:
+    Type: AWS::Serverless::LayerVersion
+    Properties:
+      LayerName: cte-cfnresponse
+      ContentUri: ../layers/CTE_CfnResponse
+      CompatibleRuntimes:
+        - python3.9
+    Metadata:
+      BuildMethod: python3.9
+
+  rCTECfnResponseHelperLayerSsmParameter:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: "/lambda/layer/cte-cfnresponse"
+      Type: String
+      Value: !Ref rCTECfnResponseHelperLayer
+      Description: SSM Parameters for Lambda layer version
+
+  rCTECommonHelperLayer:
+    Type: AWS::Serverless::LayerVersion
+    Properties:
+      LayerName: cte-common
+      ContentUri: ../layers/CTE_Common
+      CompatibleRuntimes:
+        - python3.9
+    Metadata:
+      BuildMethod: python3.9
+
+  rCTECommonHelperLayerSsmParameter:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: "/lambda/layer/cte-common"
+      Type: String
+      Value: !Ref rCTECommonHelperLayer
+      Description: SSM Parameters for Lambda layer version
+
+  # https://aws.amazon.com/premiumsupport/knowledge-center/lambda-sam-template-permissions/
+  # ----------------------
+  # CTE_CreateAccountFn
+  # ----------------------
+  rCTECreateAccountFn:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: main.lambda_handler
+      Runtime: python3.9
+      FunctionName: CTE_CreateAccountFn
+      Description: This function will create an AWS Service Catalog Provisioned Product for Account Vending Machine which creates an account within Control Tower.
+      Timeout: 900
+      CodeUri: CTE_CreateAccountFn/src
+      Layers:
+        - !Ref rCTECommonHelperLayer
+      Environment:
+        Variables:
+          # This variable is used to identify the AWS Service Catalog Product name to use for account creation
+          SC_CT_PRODUCT_NAME: 'AWS Control Tower Account Factory'
+      Policies:
+        - AWSControlTowerServiceRolePolicy
+        - AWSSSOMasterAccountAdministrator
+        - Statement:
+          - Effect: Allow
+            Action:
+              - controltower:CreateManagedAccount
+              - controltower:DescribeManagedAccount
+              - sso-directory:CreateUser
+              - sso-directory:DescribeDirectory
+              - sso-directory:SearchGroups
+              - sso-directory:SearchUsers
+              - sso:AssociateProfile
+              - sso:DescribeRegisteredRegions
+              - sso:GetApplicationInstance
+              - sso:GetPeregrineStatus
+              - sso:GetProfile
+              - sso:GetSSOStatus
+              - sso:GetTrust
+              - sso:ListDirectoryAssociations
+              - sso:ListPermissionSets
+              - sso:ListProfileAssociations
+              - servicecatalog:ExecuteProvisionedProductPlan
+              - servicecatalog:ScanProvisionedProducts
+              - servicecatalog:SearchProvisionedProducts
+              - servicecatalog:SearchProducts
+              - servicecatalog:UpdateProvisionedProduct
+              - servicecatalog:UpdateProvisionedProductProperties
+              - servicecatalog:ProvisionProduct
+              - servicecatalog:List*
+              - servicecatalog:Describe*
+            Resource: '*'
+
+  rCTECreateAccountFnLogs:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${rCTECreateAccountFn}"
+      RetentionInDays: 7
+
+  rCTECreateAccountFnPortfolioPrincipalAssociation:
+    Type: AWS::ServiceCatalog::PortfolioPrincipalAssociation
+    Properties:
+      PortfolioId: !Ref pControlTowerPortfolioId
+      PrincipalARN: !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:role/${rCTECreateAccountFnRole}
+      PrincipalType: IAM
+
+  # ----------------------
+  # CTE_GetAccountStatusFn
+  # ----------------------
+  rCTEGetAccountStatusFn:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: main.lambda_handler
+      Runtime: python3.9
+      FunctionName: CTE_GetAccountStatusFn
+      Description: This function will check the account creation status.
+      Timeout: 900
+      CodeUri: CTE_GetAccountStatusFn/src
+      Layers:
+        - !Ref rCTECommonHelperLayer
+      Policies:
+        - Statement:
+          - Effect: Allow
+            Action:
+              - servicecatalog:ScanProvisionedProducts
+              - servicecatalog:SearchProducts
+              - servicecatalog:List*
+              - servicecatalog:Create*
+              - servicecatalog:Describe*
+            Resource: '*'
+
+  rCTEGetAccountStatusFnLogs:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${rCTEGetAccountStatusFn}"
+      RetentionInDays: 7
+
+  rCTEGetAccountStatusFnPortfolioPrincipalAssociation:
+    Type: AWS::ServiceCatalog::PortfolioPrincipalAssociation
+    Properties:
+      PortfolioId: !Ref pControlTowerPortfolioId
+      PrincipalARN: !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:role/${rCTEGetAccountStatusFnRole}
+      PrincipalType: IAM
+
+  # ----------------------
+  # CTE_SignalWaitConditionTaskFn
+  # ----------------------
+  rCTESignalCfnResponseFn:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: main.lambda_handler
+      Runtime: python3.9
+      FunctionName: CTE_SignalCfnResponseFn
+      Description: This function will send a SUCCESS or FAILED response back to the original CloudFormation signal.
+      Timeout: 900
+      CodeUri: CTE_SignalCfnResponseFn/src
+      Layers:
+        - !Ref rCTECfnResponseHelperLayer
+        - !Ref rCTECommonHelperLayer
+
+  rCTESignalCfnResponseFnLogs:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${rCTESignalCfnResponseFn}"
+      RetentionInDays: 7

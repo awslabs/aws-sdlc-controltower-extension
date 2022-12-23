@@ -8,35 +8,44 @@ AWS Control Tower is currently serial when creating accounts.  There is addition
 search for an existing account creation and will put it in a wait cycle until the initial account creation has completed. 
 
 ### AWS Resource Diagram for Account Stack creation
-![alt text](images/account-provision-resources.png) 
+![alt text](images/readme/account-provision-resources.png) 
 
 ### Step Function WorkFlow for Account creation
-![alt text](images/stepfunction-diagramv2.png) 
+![alt text](images/readme/stepfunction-diagram.png) 
 
 ### AWS Resources Diagram for Account Stack integration
-![alt text](images/sdlc-resource-integration.png) 
+![alt text](images/readme/sdlc-resource-integration.png) 
 
 ### Folder Structure
 
-| Folder/File | Description |  
-| :-------------------------| :-------------------------------------------------------------------------------------------------------------------|
-| cloudformation/sam-bootstrap.yaml            | AWS Cloudformation template that will create the required AWS Resources for the solution to work properly. It will create an IAM Role, KMS Key/Alias and S3 Bucket. All of these AWS Resources are required for an AWS Serverless Application Model (SAM) deployment to successful.|
-| cloudformation/account-stack-deployment.yaml            | AWS Cloudformation template that shows you how to run the Custom Resources to initiate the Step Function to create the SDLC Accounts. |
-| lambdas/custom_resources/CTE_CrossAccountCloudFormation  | Custom Resource to run in-line cross account CloudFormation template. |
-| lambdas/stepfunctions/CTE_CreateAccountFn     | AWS Lambda Function that will use AWS Service Catalog / Control Tower to create an AWS Account. |
-| lambdas/stepfunctions/CTE_GetAccountStatusFn     | AWS Lambda Function that will scan the AWS Service Catalog Provisioned Product to see if the account creation has completed. |
-| lambdas/stepfunctions/CTE_SignalCfnResponseFn     | AWS Lambda Function that will sent a SUCCESSFUL or FAILED response back to the initial Lambda function (CTE_CreateAccountFn) from the Step Function. |
-| lambdas/stepfunctions/CTE_InvokeCreateAccountFn     | A Custom Resource that will initiate the Create Account Step Function. |
-| scripts   | Directory that has the scripts that will be run to scan / lint / deploy the AWS Lambda Functions. |
-| scripts/main.sh | An orchestration script that will run the all other linting/scanning scripts before building/deploying the SAM Function(s). | 
-| scripts/pylint.sh   | Shell script that will run the ```pylint``` command against all python files. |
-| scripts/pyscan.sh   | Executes Bandit (python lib) against all python code within the repository to identify any security vulnerabilities. |
-| scripts/sam.sh   | Executes a number of SAM commands to package / build / deploy the SAM Function to a specified account. | 
-| scripts/test.sh   | Shell script that will run the ```tox``` command to build a virtual environment and the ```pytest``` command to run any unit tests found in the repository. |
-| pytest.ini   | ini files are the configuration files of the tox project, and can also be used to hold pytest configuration if they have a [pytest] section. |
-| requirements.txt   | Pip requirements file for deployment environment. |
-| test_requirements.txt   | Pip requirements file for test environment. |
-| tox.ini | Configured file for Tox. Tox is a command-line driven automated testing tool for Python, based on the use of virtualenv. |
+| Folder/File                                             | Description                                                                                                                                                                                                                                                                         |  
+|:--------------------------------------------------------|:------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| cloudformation                                          | Directory for all AWS CloudFormation templates.                                                                                                                                                                                                                                     |
+| cloudformation/sam-bootstrap.yaml                       | AWS Cloudformation template that will create the required AWS Resources for the solution to work properly. It will create an IAM Role, KMS Key/Alias and S3 Bucket. All of these AWS Resources are required for an AWS Serverless Application Model (SAM) deployment to successful. |
+| cloudformation/codepipeline-example.yaml                | AWS Cloudformation template that shows an example of deploying an SDLC environment structure along with an AWS CodePipeline instance.                                                                                                                                               |
+| cloudformation/account-stack-deployment.yaml            | AWS Cloudformation template that shows you how to run the Custom Resources to initiate the Step Function to create the SDLC Accounts.                                                                                                                                               |
+| images                                                  | Directory for all diagrams and screenshots to show within README file.                                                                                                                                                                                                              |
+| lambdas/custom_resources                                | Directory for all Custom Resource Lambda Functions.                                                                                                                                                                                                                                 |
+| lambdas/custom_resources/CTE_CrossAccountCloudFormation | Custom Resource to run in-line cross account CloudFormation template.                                                                                                                                                                                                               |
+| lambdas/custom_resources/CTE_InvokeCreateAccountFn      | A Custom Resource that will initiate the Create Account Step Function.                                                                                                                                                                                                              |
+| lambdas/layers                                          | Directory for all Lambda Layers.                                                                                                                                                                                                                                                    |
+| lambdas/layers/CTE_CfnResponse                          | AWS Lambda Layer that will be used to pass back CloudFormation Results.                                                                                                                                                                                                             |
+| lambdas/layers/CTE_Common                               | AWS Lambda Layer that will be used to hold common definitions that could be used across all Lambda Functions.                                                                                                                                                                       |
+| lambdas/stepfunctions                                   | Directory for all Lambda Functions that are used within AWS Step Functions.                                                                                                                                                                                                         |
+| lambdas/stepfunctions/CTE_CreateAccountFn               | AWS Lambda Function that will use AWS Service Catalog / Control Tower to create an AWS Account.                                                                                                                                                                                     |
+| lambdas/stepfunctions/CTE_GetAccountStatusFn            | AWS Lambda Function that will scan the AWS Service Catalog Provisioned Product to see if the account creation has completed.                                                                                                                                                        |
+| lambdas/stepfunctions/CTE_SignalCfnResponseFn           | AWS Lambda Function that will sent a SUCCESSFUL or FAILED response back to the initial Lambda function (CTE_CreateAccountFn) from the Step Function.                                                                                                                                |
+| scripts                                                 | Directory that has the scripts that will be run to scan / lint / deploy the AWS Lambda Functions.                                                                                                                                                                                   |
+| scripts/lint.sh                                         | Shell script that will run the ```pylint``` command against all python files.                                                                                                                                                                                                       |
+| scripts/scan.sh                                         | Executes Bandit (python lib) against all python code within the repository to identify any security vulnerabilities.                                                                                                                                                                |
+| scripts/sam.sh                                          | Executes a number of SAM commands to package / build / deploy the SAM Function to a specified account.                                                                                                                                                                              | 
+| scripts/test.sh                                         | Shell script that will run the ```tox``` command to build a virtual environment and the ```pytest``` command to run any unit tests found in the repository.                                                                                                                         |
+| pytest.ini                                              | ini files are the configuration files of the tox project, and can also be used to hold pytest configuration if they have a [pytest] section.                                                                                                                                        |
+| requirements.txt                                        | Pip requirements file for deployment environment.                                                                                                                                                                                                                                   |
+| test_requirements.txt                                   | Pip requirements file for test environment.                                                                                                                                                                                                                                         |
+| tox.ini                                                 | Configured file for Tox. Tox is a command-line driven automated testing tool for Python, based on the use of virtualenv.                                                                                                                                                            |
+| .gitignore                                              | Where each line contains a pattern for files/directories to ignore                                                                                                                                                                                                                  |
+| .pylintrc                                               | This allows you to specify coding standards on a module-by-module basis                                                                                                                                                                                                             |
 
 ## Pre-requisite Steps:
 - Control Tower must be turned on in Management Account [Link to AWS Doc](https://docs.aws.amazon.com/controltower/latest/userguide/getting-started-with-control-tower.html)
@@ -180,9 +189,9 @@ For this example S3 Bucket Access Logging is not enabled but is recommended that
 - Execute the cloudformation/sam-bootstrap.yaml into the AWS Management Account where the AWS Control Tower will live.
   ```bash
   LOCAL_ROLE_ARN=$(aws sts get-caller-identity --query 'Arn' --output text | sed -e 's/assumed-//g' | sed -e 's/\/botocore-session-[0-9]*//g')
-  aws cloudformation create-stack --stack-name SDLC-ControlTowerExtension-Bootstrap \
-    --template-body file://cloudformation/sam-bootstrap.yaml \
-    --parameters ParameterKey=pRoleArn,ParameterValue=${LOCAL_ROLE_ARN}\
+  aws cloudformation deploy --stack-name SDLC-ControlTowerExtension-Bootstrap \
+    --template-file cloudformation/sam-bootstrap.yaml \
+    --parameter-overrides pRoleArn=${LOCAL_ROLE_ARN}\
     --capabilities CAPABILITY_NAMED_IAM
   ```  
 - Create ALL required Organizational Units within AWS Control Tower
@@ -195,60 +204,30 @@ For this example S3 Bucket Access Logging is not enabled but is recommended that
   
   2.) Navigate to Control Tower Console
   
-  3.) On the left side click on "Organizational units"
+  3.) On the left side click on "Organization"
   
-  ![alt text](images/ct-create-ou-1.png)  
+  ![alt text](images/readme/ct-create-ou-1.png)  
   
-  4.) On the right side click on "Add an OU"
+  4.) On the right side click on the "Create resources" drop down. Then select "Create organizational unit".
   
-  ![alt text](images/ct-create-ou-2.png)
+  ![alt text](images/readme/ct-create-ou-2.png)
   
-  5.) Enter in desired name of Organization Unit 
+  5.) Enter in desired Organizational Unit (OU) Name. Then select the Parent OU from the drop down. 
   
-  ![alt text](images/ct-create-ou-3.png) 
+  ![alt text](images/readme/ct-create-ou-3.png) 
  
-  Repeat these steps until you create all desired Organizational Units
+  Repeat these steps until you create all desired Organizational Units.
  
-  ![alt_text](images/ct-create-ou-4.png)
+  ![alt_text](images/readme/ct-create-ou-4.png)
 
 - Since this solution builds the SAM function inside Lambda-like container, Docker must be installed and running on your workstation.
 
 ### Deploying Serverless Templates
 These templates include the AWS StepFunction as well as all the Lambda Functions themselves.  The Lambda Function along 
-with the CloudFormation to deploy them **cfn.yaml** are located in the "lambdas" directory.
+with the CloudFormation to deploy them **serverless.yaml** are located in the "lambdas" directory.
 - Deploy Serverless Application Model function.
   ```bash 
   ./scripts/sam.sh 
-  ```
-
-### Post Serverless Install
-- Add AWSControlTowerExecution IAM Role as a Constraint for "AWS Control Tower Account Factory Portfolio" 
-    - This allows the execution of the Provisioned Product to run as that IAM Role
-  
-
-- Add CTE-SDLC-StepFunctions-rCTECreateAccountFnRole-* and CTE-SDLC-StepFunctions-rCTEGetAccountStatusFnRole-* as IAM 
-Roles that have access to the "AWS Control Tower Account Factory Portfolio". 
-  ```bash
-  # Get Portfolio Id
-  PORTFOLIO_ID=$(aws servicecatalog list-portfolios \
-    --query 'PortfolioDetails[?starts_with(DisplayName, `AWS Control Tower Account Factory Portfolio`)].Id' \
-    --output text)
-  
-  # Add CTE-SDLC Roles to Control Tower Portfolio 
-  aws servicecatalog associate-principal-with-portfolio \
-    --portfolio-id "${PORTFOLIO_ID}" \
-    --principal-arn $(aws iam list-roles --query 'Roles[?starts_with(RoleName, `CTE-SDLC-StepFunctions-rCTEGetAccountStatusFnRole-`)].Arn' --output text) \
-    --principal-type IAM
-  aws servicecatalog associate-principal-with-portfolio \
-    --portfolio-id "${PORTFOLIO_ID}" \
-    --principal-arn $(aws iam list-roles --query 'Roles[?starts_with(RoleName, `CTE-SDLC-StepFunctions-rCTECreateAccountFnRole-`)].Arn' --output text) \
-    --principal-type IAM
-  
-  # Add Current User/Role to Control Tower Portfolio 
-  aws servicecatalog associate-principal-with-portfolio \
-    --portfolio-id "${PORTFOLIO_ID}" \
-    --principal-arn "${LOCAL_ROLE_ARN}" \
-    --principal-type IAM 
   ```
 
 ## Custom Resource 
@@ -301,12 +280,12 @@ Resources:
       ServiceToken: !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:CTE_InvokeCreateAccountFn
       CreateAccountSfn: !Sub arn:aws:states:${AWS::Region}:${AWS::AccountId}:stateMachine:CTE_SDLC-Integration
       ServiceCatalogParameters:
-        AccountName: ent-ct-team2-depl
+        AccountName: ent-shrsvc-depl
         AccountEmail: john.doe+1@example.com
         SSOUserFirstName: John
         SSOUserLastName: Doe
         SSOUserEmail: john.doe@example.com
-        ManagedOrganizationalUnit: SampleOU_Depl
+        ManagedOrganizationalUnit: infrastructure:depl
 
   rCreateProdAccount:
     Type: Custom::InvokeCreateAccountFn
@@ -314,12 +293,12 @@ Resources:
       ServiceToken: !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:CTE_InvokeCreateAccountFn
       CreateAccountSfn: !Sub arn:aws:states:${AWS::Region}:${AWS::AccountId}:stateMachine:CTE_SDLC-Integration
       ServiceCatalogParameters:
-        AccountName: ent-ct-team2-prod
+        AccountName: ent-shrsvc-prod
         AccountEmail: john.doe+2@example.com
         SSOUserFirstName: John
         SSOUserLastName: Doe
         SSOUserEmail: john.doe@example.com
-        ManagedOrganizationalUnit: SampleOU_Prod
+        ManagedOrganizationalUnit: infrastructure:prod
 
   rCreateTestAccount:
     Type: Custom::InvokeCreateAccountFn
@@ -327,12 +306,12 @@ Resources:
       ServiceToken: !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:CTE_InvokeCreateAccountFn
       CreateAccountSfn: !Sub arn:aws:states:${AWS::Region}:${AWS::AccountId}:stateMachine:CTE_SDLC-Integration
       ServiceCatalogParameters:
-        AccountName: ent-ct-team2-test
+        AccountName: ent-shrsvc-test
         AccountEmail: john.doe+3@example.com
         SSOUserFirstName: John
         SSOUserLastName: Doe
         SSOUserEmail: john.doe@example.com
-        ManagedOrganizationalUnit: SampleOU_Test
+        ManagedOrganizationalUnit: infrastructure:dev
 ```
 
 ### CTE_CrossAccountCloudFormation
@@ -462,32 +441,8 @@ Outputs:
 ```
 
 ## Additional Information
-### Common Errors
-**Error:**
 
-```bash
-An error occurred (ResourceNotFoundException) when calling the DescribeProduct operation: Product with name AWS Control 
-Tower Account Factory does not exist or access was denied.
-```
-
-**Solution:**
-
-This means that the CTE-SDLC-StepFunctions-rCTECreateAccountFnRole-* and 
-CTE-SDLC-StepFunctions-rCTEGetAccountStatusFnRole-* Roles haven't been added to the AWS Service Catalog Portfolio 
-(AWS Control Tower Account Factory Portfolio).
-
-**Error:**
-
-```bash
-Failed to create ‘SampleOU_Depl’: AWS Control Tower cannot register organizational unit ou-xxxx-xxxxxxxx because 
-another operation is in progress. Try again later.
-```
-
-**Solution:**
-
-Wait a couple minutes between creating Organizational Units.  
-
-Custom Resource failed to stabilize in expected time. If you are using the Python cfn-response module, you may need to update your Lambda function code so that CloudFormation can attach the updated version.
+[Possible Errors](docs/ERRORS.md)
 
 ### Control Tower Troubleshooting
 https://docs.aws.amazon.com/controltower/latest/userguide/troubleshooting.html

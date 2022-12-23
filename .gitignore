@@ -11,3 +11,5 @@ htmlcov/
 coverage.xml
 junitxml.xml
 cloudformation/account-stack-deployment-local-test.json
+logs/
+__parameters.json

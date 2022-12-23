@@ -3,15 +3,16 @@
 # Copyright 2021 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0
 
+LOGS_DIR="logs"
+[ ! -d "${LOGS_DIR}" ] && mkdir "${LOGS_DIR}"
 OUTPUT_FILE="logs/lint-output.txt"
-mkdir "logs"
 echo "Output File: "${OUTPUT_FILE}""
 echo -n "" > "${OUTPUT_FILE}"
 
 echo "#---------------------------------------------------#" | tee -a "${OUTPUT_FILE}"
 echo "#               Linting Python Files                 " | tee -a "${OUTPUT_FILE}"
 echo "#---------------------------------------------------#" | tee -a "${OUTPUT_FILE}"
-find "../lambdas" -name "*.py" | \
+find "lambda" -name "*.py" | \
   grep -Ev ".venv|.pytest_cach|.tox|botocore|boto3|.aws" | \
   xargs pylint --rcfile .pylintrc | tee -a "${OUTPUT_FILE}"
 
@@ -20,9 +21,7 @@ echo "#---------------------------------------------------#" | tee -a "${OUTPUT_
 echo "#               Linting Cfn Files                    " | tee -a "${OUTPUT_FILE}"
 echo "#---------------------------------------------------#" | tee -a "${OUTPUT_FILE}"
 # https://github.com/aws-cloudformation/cfn-python-lint/issues/1265
-IGNORED_FILES=(
-  './iac/CloudFormation/CodePipeline.yaml'
-)
+IGNORED_FILES=()
 
 ALL_CFN_TEMPLATES=$(grep -r '^AWSTemplateFormatVersion' . | cut -d: -f1)
 

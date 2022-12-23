@@ -1,0 +1,8 @@
+version=0.1
+[default.global.parameters]
+stack_name = "CTE-SDLC-CustomResources"
+
+[default.deploy.parameters]
+s3_prefix = "CTE-SDLC-CustomResources"
+region = "us-east-1"
+capabilities = "CAPABILITY_NAMED_IAM"

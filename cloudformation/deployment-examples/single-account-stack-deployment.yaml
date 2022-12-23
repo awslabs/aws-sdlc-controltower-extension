@@ -1,0 +1,229 @@
+# Copyright 2021 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: Apache-2.0
+
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Creates a single AWS Account using Control Tower and deploys IAM Roles / KMS / S3 Buckets for an Application
+  Deployment Orchestrator to use.
+
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      - Label:
+          default: "SDLC Account Information"
+        Parameters:
+          - pAccountName
+          - pSSOUserFirstName
+          - pSSOUserLastName
+          - pSSOUserEmail
+          - pAccountEmail
+          - pOrganizationalUnit
+
+    ParameterLabels:
+      pAccountName:
+        default: "Account Name Prefix"
+      pSSOUserFirstName:
+        default: "SSO Users First Name"
+      pSSOUserLastName:
+        default: "SSO Users Last Name"
+      pSSOUserEmail:
+        default: "SSO Users Email Address"
+      pAccountEmail:
+        default: "Deployment Account Root Email"
+      pOrganizationalUnit:
+        default: "Deployment Account Organizational Unit"
+
+Parameters:
+  pAccountName:
+    Type: String
+  pSSOUserFirstName:
+    Type: String
+  pSSOUserLastName:
+    Type: String
+  pSSOUserEmail:
+    Type: String
+  # Account Root Email Addresses
+  pAccountEmail:
+    Type: String
+  # Account Organizational Unit
+  pOrganizationalUnit:
+    Type: String
+
+Resources:
+  rCreateDeplAccount:
+    Type: Custom::InvokeCreateAccountFn
+    Properties:
+      ServiceToken: !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:CTE_InvokeCreateAccountFn
+      CreateAccountSfn: !Sub arn:aws:states:${AWS::Region}:${AWS::AccountId}:stateMachine:CTE_SDLC_Integration
+      ServiceCatalogParameters:
+        AccountName: !Sub ${pAccountName}
+        AccountEmail: !Ref pAccountEmail
+        SSOUserFirstName: !Ref pSSOUserFirstName
+        SSOUserLastName: !Ref pSSOUserLastName
+        SSOUserEmail: !Ref pSSOUserEmail
+        ManagedOrganizationalUnit: !Ref pOrganizationalUnit
+
+  # ------
+  # IAM
+  # ------
+  rOrchestrationRoles:
+    Type: Custom::CTE_CrossAccountCloudFormation
+    Properties:
+      ServiceToken: !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:CTE_CrossAccountCloudFormation
+      Parameters:
+        Configuration:
+          RoleArn: !Sub arn:aws:iam::${rCreateDeplAccount.AccountId}:role/AWSControlTowerExecution
+          Capabilities: CAPABILITY_NAMED_IAM
+          StackName: Orchestration-IAM-Roles
+          Description: IAM Roles for the Deployment environment to setup an SDLC Account Stack
+          #TerminationProtection: true
+          Resources:
+            rOrganizationServiceRole:
+              Type: AWS::IAM::Role
+              Properties:
+                RoleName: Orchestration-Service
+                AssumeRolePolicyDocument:
+                  Version: "2012-10-17"
+                  Statement:
+                    - Effect: Allow
+                      Principal:
+                        Service:
+                          - codepipeline.amazonaws.com
+                          - events.amazonaws.com
+                        AWS:
+                          - !Sub arn:aws:iam::${rCreateDeplAccount.AccountId}:root
+                      Action:
+                        - sts:AssumeRole
+                Path: "/"
+                ManagedPolicyArns:
+                  - arn:aws:iam::aws:policy/AWSCodePipeline_FullAccess
+            rOrganizationActionRole:
+              DependsOn: rOrganizationServiceRole
+              Type: AWS::IAM::Role
+              Properties:
+                RoleName: Orchestration-Action
+                Path: "/"
+                AssumeRolePolicyDocument:
+                  Version: 2012-10-17
+                  Statement:
+                    - Effect: Allow
+                      Principal:
+                        AWS:
+                          - !Sub arn:aws:iam::${rCreateDeplAccount.AccountId}:role/Orchestration-Service
+                        Service:
+                          - cloudformation.amazonaws.com
+                          - lambda.amazonaws.com
+                          - servicecatalog.amazonaws.com
+                          - codebuild.amazonaws.com
+                      Action:
+                        - sts:AssumeRole
+                ManagedPolicyArns:
+                  - arn:aws:iam::aws:policy/AdministratorAccess
+          Outputs:
+            oOrganizationActionRoleArn:
+              Value: {"&Fn::GetAtt": ["rOrganizationActionRole", "Arn"]}
+
+  rOrchestrationResources:
+    Type: Custom::CTE_CrossAccountCloudFormation
+    Properties:
+      ServiceToken: !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:CTE_CrossAccountCloudFormation
+      Parameters:
+        Configuration:
+          RoleArn: !Sub arn:aws:iam::${rCreateDeplAccount.AccountId}:role/AWSControlTowerExecution
+          Capabilities: CAPABILITY_NAMED_IAM
+          StackName: Orchestration-Resources
+          Description: AWS Resources need for the Deployment environment to setup an SDLC Account Stack
+          #TerminationProtection: true
+          Resources:
+            # KMS Key
+            rOrchestrationKmsKey:
+              Type: AWS::KMS::Key
+              Properties:
+                Description: Used by Orchestration Assumed Roles in SDLC Accounts to Encrypt/Decrypt code
+                EnableKeyRotation: true
+                KeyPolicy:
+                  Version: '2012-10-17'
+                  Id: {"&Ref": "AWS::StackName"}
+                  Statement:
+                    - Sid: Allow access for Key Administrators
+                      Effect: Allow
+                      Principal:
+                        AWS:
+                          - {"&Fn::Sub": "arn:aws:iam::${AWS::AccountId}:root"}
+                          - {"&Fn::Sub": "arn:aws:iam::${AWS::AccountId}:role/AWSControlTowerExecution"}
+                          - !GetAtt rOrchestrationRoles.oOrganizationActionRoleArn
+                      Action:
+                        - kms:*
+                      Resource: "*"
+            rOrchestrationKmsKeyKMSAlias:
+              Type: AWS::KMS::Alias
+              Properties:
+                AliasName: {"&Fn::Sub": "alias/orchestration-${AWS::Region}"}
+                TargetKeyId: {"&Ref": "rOrchestrationKmsKey"}
+            # S3
+            rOrchestrationArtifactBucket:
+              Type: AWS::S3::Bucket
+              Properties:
+                BucketName: {"&Fn::Sub": "orchestration-${AWS::AccountId}-${AWS::Region}"}
+                AccessControl: BucketOwnerFullControl
+                PublicAccessBlockConfiguration:
+                  BlockPublicAcls: true
+                  BlockPublicPolicy: true
+                  IgnorePublicAcls: true
+                  RestrictPublicBuckets: true
+                BucketEncryption:
+                  ServerSideEncryptionConfiguration:
+                    - ServerSideEncryptionByDefault:
+                        KMSMasterKeyID: {"&Ref": "rOrchestrationKmsKey"}
+                        SSEAlgorithm: aws:kms
+                VersioningConfiguration:
+                  Status: Enabled
+            rOrchestrationArtifactBucketPolicy:
+              Type: AWS::S3::BucketPolicy
+              Properties:
+                Bucket: {"&Ref": "rOrchestrationArtifactBucket"}
+                PolicyDocument:
+                  Statement:
+                    - Sid: DenyUnEncryptedObjectUploads
+                      Effect: Deny
+                      Principal: '*'
+                      Action: s3:PutObject
+                      Resource: {"&Fn::Sub": "${rOrchestrationArtifactBucket.Arn}/*"}
+                      Condition:
+                        StringNotEquals:
+                          s3:x-amz-server-side-encryption: aws:kms
+                    - Sid: DenyInsecureConnections
+                      Effect: Deny
+                      Principal: '*'
+                      Action: s3:*
+                      Resource:
+                        - {"&Fn::Sub": "${rOrchestrationArtifactBucket.Arn}/*"}
+                        - {"&Fn::Sub": "${rOrchestrationArtifactBucket.Arn}"}
+                      Condition:
+                        Bool:
+                          aws:SecureTransport: 'false'
+                    - Sid: DisableSigV2
+                      Effect: Deny
+                      Principal: '*'
+                      Action: s3:*
+                      Resource:
+                        - {"&Fn::Sub": "${rOrchestrationArtifactBucket.Arn}/*"}
+                        - {"&Fn::Sub": "${rOrchestrationArtifactBucket.Arn}"}
+                      Condition:
+                        StringEquals:
+                          s3:signatureversion: AWS
+                    - Sid: AccessToBucket
+                      Action:
+                        - s3:*
+                      Effect: Allow
+                      Resource:
+                        - {"&Fn::Sub": "${rOrchestrationArtifactBucket.Arn}"}
+                        - {"&Fn::Sub": "${rOrchestrationArtifactBucket.Arn}/*"}
+                      Principal:
+                        AWS:
+                          - !GetAtt rOrchestrationRoles.oOrganizationActionRoleArn
+          Outputs:
+            oOrchestrationArtifactBucket:
+              Value: {"&Ref": "rOrchestrationArtifactBucket"}
+Outputs:
+  oOrchestrationArtifactBucket:
+    Value: !GetAtt rOrchestrationResources.oOrchestrationArtifactBucket
